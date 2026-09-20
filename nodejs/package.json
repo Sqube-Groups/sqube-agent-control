@@ -1,0 +1,45 @@
+{
+  "name": "@sqube/agent-guard",
+  "version": "0.1.0",
+  "description": "Developer-side execution guardrail (v0.1 experiment)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/guard.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sqube-Groups/sqube-agent-control.git",
+    "directory": "nodejs"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "execution",
+    "guardrail"
+  ]
+}
