@@ -3,7 +3,9 @@
 Optional manual probe for NVIDIA Integrate chat completions (vision).
 
 NOT part of sqube-guard policy or unit tests. Requires: pip install requests
-(or: pip install -e ".[probes]")
+(or: pip install -e ".[probes]", which loads repo-root `.env` via python-dotenv).
+
+Quoted values in `.env` are supported (surrounding quotes are stripped).
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 DEFAULT_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 DEFAULT_MODEL = "moonshotai/kimi-k3"
@@ -19,6 +22,16 @@ DEFAULT_IMAGE_URL = (
     "https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg"
 )
 DEFAULT_PROMPT = "What is in this image?"
+
+
+def _load_repo_dotenv() -> None:
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if env_path.is_file():
+        load_dotenv(env_path)
 
 
 def _normalize_env_value(value: str) -> str:
@@ -69,6 +82,8 @@ def _run_json(response) -> int:
 
 
 def main() -> None:
+    _load_repo_dotenv()
+
     parser = argparse.ArgumentParser(
         description="Probe NVIDIA Integrate chat completions (optional; not ExecutionGuard)."
     )
