@@ -58,38 +58,41 @@ Repository secrets (Settings → Secrets and variables → Actions):
 
 The Node package is published as the **unscoped** name `sqube-agent-guard` (same as PyPI). Scoped names such as `@sqube/agent-guard` require an npm organization at [npmjs.com](https://www.npmjs.com/org/create) and a token with publish access to that scope; v0.1 does not use a scope.
 
-### Steps (only from `main`)
+### Release checklist (new version)
 
-1. Merge your changes into `main` and update your local clone:
+The **Release** workflow publishes whatever versions are in the **tagged commit**—not the tag name alone. If you push `v0.1.1` but `package.json` / `pyproject.toml` still say `0.1.0`, registries get `0.1.0` again (or the job fails as a duplicate). Re-running an old **Release** run for `v0.1.0` does **not** publish a newer build; you need a **new** tag on a commit that already contains the bumps.
+
+1. **Bump every package version** (keep them aligned), then commit:
+   - `pyproject.toml` → `version`
+   - `src/sqube_agent_guard/__init__.py` → `__version__`
+   - `nodejs/package.json` and `nodejs/package-lock.json` → `version`
+   - `rust/Cargo.toml` → `version` (for consistency; crates.io publish is still disabled in CI)
+2. **Merge to `main`** and update your local clone:
 
    ```bash
    git checkout main
    git pull origin main
    ```
 
-2. Create an annotated tag (example `v0.1.0`):
+3. **Create a new semver tag** on that `main` commit—never reuse a tag that already triggered a release:
 
    ```bash
-   git tag v0.1.0
+   git tag -a v0.1.1 -m "Release v0.1.1"
    ```
 
-   Or with a message:
+   Use the next unused version (`v0.1.2`, …) if `v0.1.1` was already pushed.
+
+4. **Push only the new tag** (this starts **Release** once per push):
 
    ```bash
-   git tag -a v0.1.0 -m "Release v0.1.0"
+   git push origin v0.1.1
    ```
 
-3. Push the tag:
-
-   ```bash
-   git push origin v0.1.0
-   ```
+   Do **not** rely on “Re-run all jobs” on an old `v0.1.0` workflow to ship fixes or a new npm/PyPI version.
 
 The workflow runs only for tags matching `v*.*.*`. The tagged commit must be on `main`; tags on other branches are rejected.
 
-Before each release, bump the package version in **`pyproject.toml`** (Python) and **`nodejs/package.json`** (npm). PyPI and npm reject uploads when that version already exists; Git tags alone do not change the published version.
-
-To remove a mistaken local tag before pushing: `git tag -d v0.1.0`. To delete a remote tag (use carefully): `git push origin --delete v0.1.0`.
+To remove a mistaken **local** tag before pushing: `git tag -d v0.1.1`. To delete a **remote** tag (use carefully): `git push origin --delete v0.1.1`.
 
 ### PyPI setup and troubleshooting
 
