@@ -46,6 +46,8 @@ Repository secrets (Settings → Secrets and variables → Actions):
 | `PYPI_API_TOKEN` | Python package publish to PyPI |
 | `NPM_TOKEN` | npm publish (`NODE_AUTH_TOKEN`) |
 
+The Node package is published as the **unscoped** name `sqube-agent-guard` (same as PyPI). Scoped names such as `@sqube/agent-guard` require an npm organization at [npmjs.com](https://www.npmjs.com/org/create) and a token with publish access to that scope; v0.1 does not use a scope.
+
 ### Steps (only from `main`)
 
 1. Merge your changes into `main` and update your local clone:
