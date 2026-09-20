@@ -8,6 +8,15 @@ const config = {
   organizationName: 'Sqube-Groups',
   projectName: 'sqube-agent-control',
   trailingSlash: false,
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'canonical',
+        href: 'https://sqube-groups.github.io/sqube-agent-control/docs/intro',
+      },
+    },
+  ],
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   i18n: {
