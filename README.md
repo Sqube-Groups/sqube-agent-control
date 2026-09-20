@@ -102,6 +102,17 @@ cargo add sqube-guard
 
 Packaging and releases are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`, `CARGO_REGISTRY_TOKEN`.
 
+## Optional LLM probes
+
+v0.1 guard decisions are **deterministic** — no LLM in the policy path. For manual experiments only (not CI, not `ExecutionGuard`), see [`examples/nvidia_kimi_vision_probe.py`](examples/nvidia_kimi_vision_probe.py) and [Optional LLM probes](https://sqube-groups.github.io/sqube-agent-control/docs/optional-llm-probes) on the docs site.
+
+```bash
+pip install requests   # or: pip install -e ".[probes]"
+export NVIDIA_API_KEY="your-key"
+python examples/nvidia_kimi_vision_probe.py
+python examples/nvidia_kimi_vision_probe.py --no-stream
+```
+
 ## Development
 
 ```bash

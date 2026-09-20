@@ -24,6 +24,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+probes = ["requests>=2.31"]
 
 [project.scripts]
 sqube-guard = "sqube_guard.cli:main"

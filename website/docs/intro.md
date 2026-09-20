@@ -25,4 +25,5 @@ All three implement the same v0.1 contract documented in the [v0.1 specification
 ## Where to go next
 
 - Read the full **[v0.1 spec](./v0.1-spec)** — product promise, non-goals, ledger schema, tests required, and validation metrics.
+- **[Optional LLM probes](./optional-llm-probes)** — external API test scripts only; not used for guard decisions.
 - Clone the [GitHub repository](https://github.com/Sqube-Groups/sqube-agent-control) for SDK source and examples.
