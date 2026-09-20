@@ -20,7 +20,7 @@ Do not use messaging like “secure your agents,” “enterprise control plane,
 | Node.js | `@sqube/guard` (npm) | `nodejs/` |
 | Rust | `sqube-guard` (crates.io) | `rust/` |
 
-All three implement the same v0.1 contract from [`docs/project md files/sqube_execution_guard_v0_1_spec.md`](docs/project%20md%20files/sqube_execution_guard_v0_1_spec.md).
+All three implement the same v0.1 contract documented on **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)** (source: [`website/docs/v0.1-spec.md`](website/docs/v0.1-spec.md)).
 
 ## Quick start (Python)
 
@@ -116,6 +116,20 @@ cd nodejs && npm ci && npm test
 cd rust && cargo test
 ```
 
+## Documentation
+
+Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main`:
+
+**https://sqube-groups.github.io/sqube-agent-control/**
+
+Run locally:
+
+```bash
+cd website && npm ci && npm start
+```
+
+Keep private notes outside the repo under `docs_internal_never_commit/` (gitignored). Other common local-only folder names (`docs-never-commit/`, `.local-docs/`, `**/never-commit/`) are ignored as well.
+
 ## Project structure
 
 ```text
@@ -124,7 +138,7 @@ nodejs/              # TypeScript / npm SDK
 rust/                # Rust crate
 tests/               # Python tests
 examples/            # Python examples
-docs/                # v0.1 spec
+website/             # Docusaurus docs site (GitHub Pages)
 ```
 
 ## Contributing

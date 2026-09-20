@@ -27,5 +27,15 @@ examples_ledger.sqlite3
 # OS
 .DS_Store
 
-# Internal docs (not for repo)
+# Internal / local-only docs (never commit)
 docs_internal_never_commit/
+docs-never-commit/
+.local-docs/
+**/never-commit/
+# Legacy spec path (content lives in website/docs/)
+docs/project md files/
+
+# Docusaurus
+website/node_modules/
+website/build/
+website/.docusaurus/
