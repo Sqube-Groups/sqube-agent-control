@@ -17,7 +17,7 @@ Do not use messaging like “secure your agents,” “enterprise control plane,
 | Language | Package | Path |
 |----------|---------|------|
 | Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | `@sqube/agent-guard` (npm) | `nodejs/` |
+| Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
 | Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` |
 
 All three implement the same v0.1 contract documented on **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)** (source: [`website/docs/v0.1-spec.md`](website/docs/v0.1-spec.md)).
@@ -48,7 +48,7 @@ delete_file("/tmp/example.txt")
 ## Quick start (Node.js)
 
 ```typescript
-import { Decision, ExecutionGuard } from "@sqube/agent-guard";
+import { Decision, ExecutionGuard } from "sqube-agent-guard";
 
 const guard = new ExecutionGuard({
   policy: (action) =>
@@ -98,7 +98,7 @@ Policies are application-defined callables. No LLM in the decision path for v0.1
 
 ```bash
 pip install sqube-agent-guard
-npm install @sqube/agent-guard
+npm install sqube-agent-guard
 ```
 
 **Rust** — crates.io is not published yet. Clone this repository and build from `rust/`:

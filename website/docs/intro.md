@@ -17,7 +17,7 @@ title: Introduction
 | Language | Package | Source |
 |----------|---------|--------|
 | Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | `@sqube/agent-guard` (npm) | `nodejs/` |
+| Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
 | Rust | `sqube-agent-guard` (build from repo) | `rust/` |
 
 All three implement the same v0.1 contract documented in the [v0.1 specification](./v0.1-spec).
@@ -26,7 +26,7 @@ All three implement the same v0.1 contract documented in the [v0.1 specification
 
 ```bash
 pip install sqube-agent-guard
-npm install @sqube/agent-guard
+npm install sqube-agent-guard
 ```
 
 Rust is **not on crates.io yet**. Clone the repository and build from `rust/`:
