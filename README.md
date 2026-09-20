@@ -101,28 +101,16 @@ pip install sqube-agent-guard
 npm install sqube-agent-guard
 ```
 
-**Rust** — crates.io is not published yet. Clone this repository and build from `rust/`:
-
-```bash
-git clone https://github.com/Sqube-Groups/sqube-agent-control.git
-cd sqube-agent-control/rust
-cargo build
-cargo test
-```
-
-To depend on the crate from another Rust project before crates.io publish, use a path or git dependency in `Cargo.toml` (see [`rust/README.md`](rust/README.md)).
-
-Packaging and releases for Python and Node.js are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`.
+**Rust** — crates.io is not published yet. Clone this repository and build from `rust/` (see [`rust/README.md`](rust/README.md)).
 
 ## Optional LLM probes
 
-v0.1 guard decisions are **deterministic** — no LLM in the policy path. For manual experiments only (not CI, not `ExecutionGuard`), see [`examples/nvidia_kimi_vision_probe.py`](examples/nvidia_kimi_vision_probe.py) and [Optional LLM probes](https://sqube-groups.github.io/sqube-agent-control/docs/optional-llm-probes) on the docs site.
+v0.1 guard decisions are **deterministic** — no LLM in the policy path. For manual experiments only (not CI, not `ExecutionGuard`), see [`examples/nvidia_kimi_vision_probe.py`](examples/nvidia_kimi_vision_probe.py).
 
 ```bash
 pip install requests   # or: pip install -e ".[probes]"
 export NVIDIA_API_KEY="your-key"
 python examples/nvidia_kimi_vision_probe.py
-python examples/nvidia_kimi_vision_probe.py --no-stream
 ```
 
 ## Development
@@ -141,26 +129,13 @@ cd rust && cargo test
 
 ## Documentation
 
-**CI** runs on pull requests and pushes targeting `main`; **GitHub Pages** deploys only on pushes to `main`; **PyPI/npm releases** run only for `v*.*.*` tags whose commit is on `main`.
-
-Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main` (project site — path includes the repo name):
-
 | Use | URL |
 |-----|-----|
-| **Repo About / Website field** | `https://sqube-groups.github.io/sqube-agent-control/` |
-| **Docs home (intro)** | `https://sqube-groups.github.io/sqube-agent-control/docs/intro` |
+| **Docs home (intro)** | [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro) |
+| **v0.1 specification** | [https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec) |
+| **Repo About / Website field** | [https://sqube-groups.github.io/sqube-agent-control/](https://sqube-groups.github.io/sqube-agent-control/) |
 
-Do **not** link `https://sqube-groups.github.io/docs/...` — that is the org/user site root without the `/sqube-agent-control/` prefix. Unless you configure a custom domain at the org root, docs live only under `/sqube-agent-control/`.
-
-**Maintainers:** [Enable GitHub Pages (GitHub Actions source)](website/docs/deploy-pages.md), docs deploy behavior, and [release tag commands](website/docs/deploy-pages.md#release-tags-pypi--npm) — see [`website/docs/deploy-pages.md`](website/docs/deploy-pages.md).
-
-Run locally:
-
-```bash
-cd website && npm ci && npm start
-```
-
-Keep private notes outside the repo under `docs_internal_never_commit/` (gitignored). Other common local-only folder names (`docs-never-commit/`, `.local-docs/`, `**/never-commit/`) are ignored as well.
+Local docs preview: `cd website && npm ci && npm start`
 
 ## Project structure
 

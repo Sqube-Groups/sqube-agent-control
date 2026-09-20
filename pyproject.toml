@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sqube-agent-guard"
-version = "0.1.1"
+version = "0.1.2"
 description = "Developer-side execution guardrail with decision, optional human pause, and append-only ledger (v0.1 experiment)"
-readme = "README.md"
+readme = "README.pypi.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Sqube Groups" }]
@@ -34,6 +34,9 @@ dev-mode-dirs = ["src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["sqube_agent_guard"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

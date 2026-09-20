@@ -1,6 +1,6 @@
 {
   "name": "sqube-agent-guard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "readme": "README.md",
   "description": "Developer-side execution guardrail (v0.1 experiment)",
   "license": "Apache-2.0",
@@ -22,8 +22,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/guard.test.js",
-    "copy-readme": "cp ../README.md README.md",
-    "prepublishOnly": "npm run copy-readme && npm run build"
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=18"

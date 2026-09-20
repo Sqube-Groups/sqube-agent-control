@@ -43,5 +43,5 @@ After a future crates.io publish, `cargo add sqube-agent-guard` will apply; unti
 ## Where to go next
 
 - Read the full **[v0.1 spec](./v0.1-spec)** — product promise, non-goals, ledger schema, tests required, and validation metrics.
-- **[Optional LLM probes](./optional-llm-probes)** — external API test scripts only; not used for guard decisions.
-- Clone the [GitHub repository](https://github.com/Sqube-Groups/sqube-agent-control) for SDK source and examples.
+- See the [GitHub README](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/README.md) for local development, contributing, and optional LLM probe examples.
+- Clone the [GitHub repository](https://github.com/Sqube-Groups/sqube-agent-control) for SDK source and examples (including optional LLM probe scripts under `examples/`).

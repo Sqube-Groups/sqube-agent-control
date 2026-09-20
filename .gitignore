@@ -30,7 +30,8 @@ examples_ledger.sqlite3
 .DS_Store
 
 # Internal / local-only docs (never commit)
-docs_internal_never_commit/
+docs_internal_never_commit/*
+!docs_internal_never_commit/MAINTAINER.md.template
 docs-never-commit/
 .local-docs/
 **/never-commit/
