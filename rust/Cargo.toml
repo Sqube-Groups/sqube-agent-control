@@ -1,8 +1,5 @@
 [package]
 name = "sqube-agent-guard"
-
-[lib]
-name = "sqube_agent_guard"
 version = "0.1.0"
 edition = "2021"
 description = "Developer-side execution guardrail (v0.1 experiment)"
@@ -10,6 +7,9 @@ license = "Apache-2.0"
 repository = "https://github.com/Sqube-Groups/sqube-agent-control"
 readme = "README.md"
 keywords = ["ai", "agents", "execution", "guardrail"]
+
+[lib]
+name = "sqube_agent_guard"
 
 [dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }
