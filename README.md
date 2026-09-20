@@ -111,4 +111,18 @@ The structure may evolve as the project develops.
 
 Contributions and feedback are welcome.
 
-For larger changes, please open an
+For larger changes, please open an issue first so the proposed change can be discussed before implementation.
+
+## License
+
+Copyright © 2026 Sqube Groups
+
+Licensed under the Apache License, Version 2.0.
+
+See [`LICENSE`](LICENSE) for the full license text.
+
+## Sqube
+
+Sqube Agent Control is an open-source project from **Sqube Groups**.
+
+[Sqube](https://sqube.in)
