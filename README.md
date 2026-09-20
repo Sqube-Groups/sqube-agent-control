@@ -18,7 +18,7 @@ Do not use messaging like “secure your agents,” “enterprise control plane,
 |----------|---------|------|
 | Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
 | Node.js | `@sqube/agent-guard` (npm) | `nodejs/` |
-| Rust | `sqube-agent-guard` (crates.io) | `rust/` |
+| Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` |
 
 All three implement the same v0.1 contract documented on **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)** (source: [`website/docs/v0.1-spec.md`](website/docs/v0.1-spec.md)).
 
@@ -94,13 +94,25 @@ Policies are application-defined callables. No LLM in the decision path for v0.1
 
 ## Installation
 
+**Python and Node.js** (published registries):
+
 ```bash
 pip install sqube-agent-guard
 npm install @sqube/agent-guard
-cargo add sqube-agent-guard
 ```
 
-Packaging and releases are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`, `CARGO_REGISTRY_TOKEN`.
+**Rust** — crates.io is not published yet. Clone this repository and build from `rust/`:
+
+```bash
+git clone https://github.com/Sqube-Groups/sqube-agent-control.git
+cd sqube-agent-control/rust
+cargo build
+cargo test
+```
+
+To depend on the crate from another Rust project before crates.io publish, use a path or git dependency in `Cargo.toml` (see [`rust/README.md`](rust/README.md)).
+
+Packaging and releases for Python and Node.js are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`.
 
 ## Optional LLM probes
 

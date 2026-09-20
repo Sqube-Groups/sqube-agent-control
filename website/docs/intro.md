@@ -16,11 +16,29 @@ title: Introduction
 
 | Language | Package | Source |
 |----------|---------|--------|
-| Python | `sqube-agent-guard` | `src/sqube_agent_guard/` |
-| Node.js | `@sqube/agent-guard` | `nodejs/` |
-| Rust | `sqube-agent-guard` | `rust/` |
+| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
+| Node.js | `@sqube/agent-guard` (npm) | `nodejs/` |
+| Rust | `sqube-agent-guard` (build from repo) | `rust/` |
 
 All three implement the same v0.1 contract documented in the [v0.1 specification](./v0.1-spec).
+
+## Installation
+
+```bash
+pip install sqube-agent-guard
+npm install @sqube/agent-guard
+```
+
+Rust is **not on crates.io yet**. Clone the repository and build from `rust/`:
+
+```bash
+git clone https://github.com/Sqube-Groups/sqube-agent-control.git
+cd sqube-agent-control/rust
+cargo build
+cargo test
+```
+
+After a future crates.io publish, `cargo add sqube-agent-guard` will apply; until then use a path or git dependency (see [`rust/README.md`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/rust/README.md) in the repo).
 
 ## Where to go next
 
