@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Node
+nodejs/node_modules/
+nodejs/dist/
+
+# Rust
+rust/target/
+
+# Ledgers / local artifacts
+*.sqlite3
+examples_ledger.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Internal docs (not for repo)
+docs_internal_never_commit/

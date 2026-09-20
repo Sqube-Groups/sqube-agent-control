@@ -2,59 +2,87 @@
 
 > Open-source infrastructure for controlling AI agent actions.
 
-Sqube Agent Control provides developers with primitives for evaluating and controlling actions performed by AI agents.
+**v0.1 is an experiment.** SDK wrapping is bypassable. This is **not** a replacement for IAM, gateways, or security controls. It exists to learn whether execution-decision tooling has pull in real teams.
 
-The project is currently in early experimental development.
+Sqube Execution Guard (v0.1) wraps a consequential action, deterministically decides `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`, optionally pauses for a human via CLI, and writes an append-only SQLite execution record.
+
+Do not use messaging like “secure your agents,” “enterprise control plane,” or “prevent all unauthorized actions.”
 
 ## Status
 
 **Experimental — API may change.**
 
-The current release focuses on a small Python-first execution-control layer.
+## SDKs
 
-## Core concepts
+| Language | Package | Path |
+|----------|---------|------|
+| Python | `sqube-guard` (PyPI) | `src/sqube_guard/` |
+| Node.js | `@sqube/guard` (npm) | `nodejs/` |
+| Rust | `sqube-guard` (crates.io) | `rust/` |
 
-Sqube Agent Control currently works around a few simple concepts:
+All three implement the same v0.1 contract from [`docs/project md files/sqube_execution_guard_v0_1_spec.md`](docs/project%20md%20files/sqube_execution_guard_v0_1_spec.md).
 
-* **Actions** — operations an agent wants to perform
-* **Policies** — application-defined rules for evaluating actions
-* **Decisions** — whether an action can proceed
-* **Approvals** — optional human decisions for selected actions
-* **Execution records** — structured information about action execution
-
-## Quick start
+## Quick start (Python)
 
 ```python
 from sqube_guard import ExecutionGuard, Decision
 
 
-def policy(action, resource, context):
+def policy(action, resource, agent_id, **ctx):
     if action == "delete_file":
         return Decision.REQUIRE_APPROVAL
-
     return Decision.ALLOW
 
 
 guard = ExecutionGuard(policy=policy)
 
 
-@guard.wrap_action(
-    action="delete_file",
-    resource=lambda path: f"file:{path}",
-)
+@guard.wrap_action(action="delete_file", resource=lambda path: f"file:{path}")
 def delete_file(path):
-    # Your action
     ...
 
 
 delete_file("/tmp/example.txt")
 ```
 
-The policy determines how the action should proceed before the wrapped function executes.
+## Quick start (Node.js)
+
+```typescript
+import { Decision, ExecutionGuard } from "@sqube/guard";
+
+const guard = new ExecutionGuard({
+  policy: (action) =>
+    action === "delete_file" ? Decision.REQUIRE_APPROVAL : Decision.ALLOW,
+});
+
+const deleteFile = guard.wrapAction(
+  { action: "delete_file", resource: (path: string) => `file:${path}` },
+  (path: string) => { /* ... */ }
+);
+
+await deleteFile("/tmp/example.txt");
+```
+
+## Quick start (Rust)
+
+```rust
+use sqube_guard::{Decision, ExecutionGuard, WrapOptions};
+
+let guard = ExecutionGuard::with_default_policy().with_ledger_path("sqube_ledger.sqlite3");
+
+guard.wrap_action(
+    WrapOptions {
+        action: "delete_file".into(),
+        resource: Some("file:/tmp/x".into()),
+        agent_id: "default".into(),
+    },
+    || Ok(()),
+    "path=/tmp/x",
+    r#"{"path":"/tmp/x"}"#,
+)?;
+```
 
 ## Decisions
-
-The current API supports:
 
 ```text
 ALLOW
@@ -62,67 +90,49 @@ BLOCK
 REQUIRE_APPROVAL
 ```
 
-Policies are application-defined and do not require an LLM.
+Policies are application-defined callables. No LLM in the decision path for v0.1.
 
 ## Installation
 
 ```bash
 pip install sqube-guard
+npm install @sqube/guard
+cargo add sqube-guard
 ```
 
-> Packaging and release status are experimental during early development.
+Packaging and releases are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`, `CARGO_REGISTRY_TOKEN`.
 
 ## Development
 
-Clone the repository:
-
 ```bash
-git clone https://github.com/Sqube-Groups/sqube-agent-control.git
-cd sqube-agent-control
-```
-
-Install the development dependencies and run the tests:
-
-```bash
+# Python
+pip install -e ".[dev]"
 pytest
+
+# Node
+cd nodejs && npm ci && npm test
+
+# Rust
+cd rust && cargo test
 ```
 
 ## Project structure
 
-The project is organized around the core execution-control primitives:
-
 ```text
-src/
-└── sqube_guard/
-    ├── guard.py
-    ├── policy.py
-    ├── models.py
-    ├── ledger.py
-    ├── approval.py
-    └── redaction.py
-
-tests/
-examples/
+src/sqube_guard/     # Python SDK
+nodejs/              # TypeScript / npm SDK
+rust/                # Rust crate
+tests/               # Python tests
+examples/            # Python examples
+docs/                # v0.1 spec
 ```
-
-The structure may evolve as the project develops.
 
 ## Contributing
 
-Contributions and feedback are welcome.
-
-For larger changes, please open an issue first so the proposed change can be discussed before implementation.
+Contributions and feedback are welcome. For larger changes, open an issue first.
 
 ## License
 
-Copyright © 2026 Sqube Groups
-
-Licensed under the Apache License, Version 2.0.
-
-See [`LICENSE`](LICENSE) for the full license text.
-
-## Sqube
-
-Sqube Agent Control is an open-source project from **Sqube Groups**.
+Copyright © 2026 Sqube Groups — [Apache-2.0](LICENSE)
 
 [Sqube](https://sqube.in)

@@ -1,0 +1,481 @@
+# Sqube Execution Guard — v0.1 Spec
+
+**Status:** Approved experiment  
+**Product name:** Sqube Execution Guard (provisional)  
+**Purpose:** Test whether an execution-decision wedge deserves to become a product.  
+**Not:** A final architecture. A final company bet. A security boundary.
+
+---
+
+## 1. Decision locked
+
+We are **not** building Sqube Execution Guard because we already know the product.
+
+We are building **v0.1** to discover whether the execution-decision wedge has real pull.
+
+```text
+Research
+   ↓
+v0.1 hypothesis
+   ↓
+Build
+   ↓
+Real team
+   ↓
+14-day usage
+   ↓
+Evidence
+   ↓
+  Pull → expand
+  No pull → pivot / kill
+```
+
+---
+
+## 2. v0.1 promise
+
+> Wrap a consequential Python action, deterministically decide `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`, optionally pause for a human, and write an append-only execution record.
+
+That is the entire product surface for v0.1.
+
+### What v0.1 is
+
+```text
+Developer-side execution guardrail
++ decision
++ optional human pause
++ append-only ledger
+```
+
+### What v0.1 is not
+
+```text
+Non-bypassable security boundary
+MCP gateway
+Enterprise control plane
+IAM system
+Observability platform
+```
+
+Any marketing, README, or demo that implies v0.1 is a security enforcement boundary is a credibility failure.
+
+---
+
+## 3. Explicit non-goals (v0.1)
+
+Do **not** implement, design for, or document as required:
+
+- MCP adapter
+- Gateway / proxy enforcement
+- Slack / Teams / email approval channels
+- OPA / Cedar / Cerbos integration
+- Enterprise IAM / OIDC / SSO
+- Multi-provider plugin frameworks beyond what is used
+- Centralized Postgres control plane
+- Web UI / dashboard
+- Replay
+- Risk ML
+- Framework-specific integrations (LangGraph, CrewAI, etc.)
+- OpenTelemetry as a required path
+- Cryptographic ledger signatures
+- Multi-tenant organizations / workspaces
+
+These may appear later **only** if real usage demands them.
+
+---
+
+## 4. Package and public API
+
+**Package name:** `sqube-guard`  
+**Import:**
+
+```python
+from sqube_guard import ExecutionGuard, Decision, ActionStatus
+```
+
+### Minimal public surface
+
+```python
+class Decision(str, Enum):
+    ALLOW = "ALLOW"
+    BLOCK = "BLOCK"
+    REQUIRE_APPROVAL = "REQUIRE_APPROVAL"
+
+class ActionStatus(str, Enum):
+    REQUESTED = "REQUESTED"
+    EVALUATED = "EVALUATED"
+    BLOCKED = "BLOCKED"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+    EXPIRED = "EXPIRED"
+    EXECUTING = "EXECUTING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+class ExecutionGuard:
+    def __init__(
+        self,
+        *,
+        policy: Callable[..., Decision] | None = None,
+        ledger_path: str = "sqube_ledger.sqlite3",
+        approval_timeout_seconds: int = 300,
+        on_error: Literal["fail_open", "fail_closed"] = "fail_closed",
+    ): ...
+
+    def wrap_action(
+        self,
+        *,
+        action: str,
+        resource: str | Callable[..., str] | None = None,
+        agent_id: str = "default",
+    ) -> Callable: ...
+```
+
+No other public types are required for v0.1.
+
+---
+
+## 5. ExecutionDecision
+
+Every guarded call produces exactly one decision:
+
+| Decision | Behavior |
+|---|---|
+| `ALLOW` | Execute immediately. Record decision + result. |
+| `BLOCK` | Do not execute. Raise or return a structured denial. Record decision. |
+| `REQUIRE_APPROVAL` | Pause. Ask human via CLI. On approve → execute + record. On deny/timeout → do not execute + record. |
+
+Decision must be **deterministic** given the same policy inputs. No LLM in the decision path for v0.1.
+
+---
+
+## 6. Minimal ActionRecord
+
+Store only what the experiment needs.
+
+```json
+{
+  "execution_id": "sq_exec_...",
+  "created_at": "ISO-8601",
+  "agent_id": "string",
+  "action": "string",
+  "resource": "string | null",
+  "parameters_hash": "sha256 hex",
+  "parameters_summary": "redacted short string",
+  "decision": "ALLOW | BLOCK | REQUIRE_APPROVAL",
+  "policy_id": "string",
+  "status": "ActionStatus",
+  "approved_by": "string | null",
+  "approval_reason": "string | null",
+  "result_status": "SUCCESS | FAILED | CANCELLED | null",
+  "error_message": "string | null",
+  "duration_ms": "int | null",
+  "completed_at": "ISO-8601 | null"
+}
+```
+
+### Rules
+
+- Do **not** store raw parameters by default.
+- Store `parameters_hash` always.
+- Store `parameters_summary` only after redaction.
+- Schema may evolve; v0.1 must remain readable by a simple SQLite query.
+
+---
+
+## 7. State machine (implemented states only)
+
+```text
+REQUESTED
+    ↓
+EVALUATED
+    ├── BLOCKED                    (terminal)
+    ├── ALLOWED → EXECUTING → SUCCEEDED | FAILED
+    └── WAITING_APPROVAL
+            ├── APPROVED → EXECUTING → SUCCEEDED | FAILED
+            ├── DENIED                 (terminal)
+            └── EXPIRED                (terminal)
+```
+
+Invariant:
+
+> No successful side effect may exist without a prior `ALLOW` or `APPROVED` decision recorded in the ledger.
+
+---
+
+## 8. Local policy
+
+v0.1 policy is a Python callable:
+
+```python
+def policy(action: str, resource: str | None, agent_id: str, **ctx) -> Decision:
+    ...
+```
+
+Optional thin YAML helper is allowed **only if** it compiles to the same callable model. Do not invent a policy language.
+
+### Default policy for examples
+
+```python
+HIGH_RISK_ACTIONS = {"db_mutation", "send_email", "file_delete"}
+
+def default_policy(action: str, resource: str | None, agent_id: str, **_) -> Decision:
+    if action in HIGH_RISK_ACTIONS:
+        return Decision.REQUIRE_APPROVAL
+    if action.startswith("admin_"):
+        return Decision.BLOCK
+    return Decision.ALLOW
+```
+
+Policy identifier recorded in the ledger: function name or explicit `policy_id` string.
+
+---
+
+## 9. CLI approval
+
+When decision is `REQUIRE_APPROVAL`:
+
+```text
+[sqube] Approval required
+  execution_id: sq_exec_...
+  agent_id:     support-bot
+  action:       send_email
+  resource:     customer@example.com
+  summary:      to=cu***@example.com subject=Refund update
+
+Approve? [y/N]
+```
+
+- `y` / `yes` → `APPROVED`, continue execution
+- anything else → `DENIED`, do not execute
+- timeout (`approval_timeout_seconds`) → `EXPIRED`, do not execute
+
+No Slack. No web UI. No webhook in v0.1.
+
+---
+
+## 10. SQLite ledger
+
+- Default path: `sqube_ledger.sqlite3` (configurable)
+- Append-only writes for execution records
+- No update-in-place of historical decisions
+- Status transitions may append events **or** update a single row status field — pick one approach and keep it simple
+- Must be inspectable with standard `sqlite3` CLI
+
+Suggested table:
+
+```sql
+CREATE TABLE execution_records (
+  execution_id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  resource TEXT,
+  parameters_hash TEXT NOT NULL,
+  parameters_summary TEXT,
+  decision TEXT NOT NULL,
+  policy_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  approved_by TEXT,
+  approval_reason TEXT,
+  result_status TEXT,
+  error_message TEXT,
+  duration_ms INTEGER,
+  completed_at TEXT
+);
+```
+
+---
+
+## 11. Parameter redaction
+
+Before any summary is stored or printed:
+
+- Email local-part: keep first 2 chars, mask rest
+- Tokens / keys matching common patterns: replace with `[REDACTED]`
+- Strings longer than 200 chars in summary: truncate
+- Raw kwargs never written to ledger by default
+
+Provide a single `redact_value(value: Any) -> str` helper used by both CLI and ledger summary.
+
+---
+
+## 12. Fail-open / fail-closed
+
+Configurable on `ExecutionGuard`:
+
+| Mode | Policy/ledger/approval failure behavior |
+|---|---|
+| `fail_closed` (default) | Do not execute. Record failure if possible. Raise. |
+| `fail_open` | Execute. Record that guard failed if possible. |
+
+Default is `fail_closed` so examples behave cautiously. Document that production choice depends on risk tolerance; v0.1 does not pretend to solve availability architecture.
+
+---
+
+## 13. Three real examples
+
+Every example must show **without Sqube** vs **with Sqube**, then ask the substitution question.
+
+### Example A — DB mutation
+
+```text
+Without Sqube:
+  agent → execute_sql(query)
+
+With Sqube:
+  agent
+    → Sqube decision
+    → ALLOW / BLOCK / APPROVAL
+    → execute_sql(query)
+    → ledger
+```
+
+### Example B — Send email
+
+```text
+Without Sqube:
+  agent → send_email(to, subject, body)
+
+With Sqube:
+  agent
+    → Sqube decision (REQUIRE_APPROVAL for send_email)
+    → CLI approval
+    → send_email(...)
+    → ledger
+```
+
+### Example C — File delete
+
+```text
+Without Sqube:
+  agent → os.remove(path)
+
+With Sqube:
+  agent
+    → Sqube decision
+    → BLOCK if path outside allowlist, else APPROVAL/ALLOW
+    → os.remove(path)
+    → ledger
+```
+
+### Mandatory experiment question (do not answer in code)
+
+> Why wouldn't the developer just implement this with their existing framework, a decorator, and a log line?
+
+This question is part of validation, not something the README should paper over.
+
+---
+
+## 14. Tests
+
+Minimum test suite for v0.1:
+
+1. `ALLOW` executes function and writes ledger row
+2. `BLOCK` does not execute function and writes ledger row
+3. `REQUIRE_APPROVAL` + approve → executes + records approval
+4. `REQUIRE_APPROVAL` + deny → does not execute
+5. `REQUIRE_APPROVAL` + timeout → `EXPIRED`, does not execute
+6. Exception inside wrapped function → `FAILED`, error recorded, exception re-raised
+7. Parameters are hashed; raw secrets do not appear in ledger summary
+8. `fail_closed` prevents execution when policy callable raises
+9. `fail_open` allows execution when policy callable raises
+10. State invariant: no `SUCCEEDED` without prior allow/approved decision
+
+No need for distributed tests, browser tests, or multi-process approval tests in v0.1.
+
+---
+
+## 15. 14-day validation metrics
+
+Run with **one team**, **one consequential action type**, on a path that can produce a real side effect (even if staged/safe environment).
+
+Measure:
+
+| Metric | What good looks like |
+|---|---|
+| Install | Guard imports and wraps without project rewrite |
+| Real path | Used outside a demo script |
+| Retention | Still in path after 14 days |
+| Reliability | No unexplained missed decisions / crashed approval flows |
+| Latency | Approval path acceptable for that workflow |
+| Bypass behavior | Team notes whether ungarded paths still exist (expected in v0.1) |
+| Friction | Developer can explain pain in one sentence |
+| Expansion | Team adds a second action type without being sold |
+| Willingness to pay / continue | Explicit yes/no at day 14 |
+
+---
+
+## 16. Competitive substitution test
+
+For the chosen action type, the experiment must document:
+
+1. Current alternative (framework hook, gateway, manual review, nothing)
+2. What Sqube added
+3. What Sqube cost (latency, ceremony, dependency)
+4. Whether the team would keep Sqube if a free existing tool covered the same job
+
+If the honest answer is “we would just use X,” record that as evidence — not as a messaging problem to spin.
+
+---
+
+## 17. Kill conditions
+
+Stop expanding this product direction if:
+
+- After earnest outreach, no team will put it on a real path
+- Teams drop it within 14 days without asking for a next feature
+- Teams say existing tools already solve the same job adequately
+- The only retained use is demo/screenshot value
+- We cannot state a gap versus Microsoft AGT / simple DIY / existing gateways without inventing one
+
+Pivot options remain open: different wedge, different ICP, or kill.
+
+---
+
+## 18. Implementation sequence
+
+1. Package skeleton + enums + ActionRecord model  
+2. SQLite ledger write/read  
+3. Policy callable wiring  
+4. `wrap_action` decorator (sync first)  
+5. CLI approval  
+6. Redaction helper  
+7. fail-open / fail-closed  
+8. Three examples  
+9. Tests  
+10. Short README that states non-goals and v0.1 limits honestly  
+
+Async support is optional if it delays the experiment. Prefer shipping sync-only if that is faster.
+
+---
+
+## 19. README honesty requirements
+
+README must state, near the top:
+
+- v0.1 is an experiment
+- SDK wrapping is bypassable
+- not a replacement for IAM, gateways, or security controls
+- intended for learning whether execution-decision tooling has pull
+
+Do not use: “secure your agents,” “enterprise control plane,” “prevent all unauthorized actions.”
+
+---
+
+## 20. Confirmation
+
+This spec is the only implementation contract for the next engineering step.
+
+| Item | Status |
+|---|---|
+| Product name provisional | Locked |
+| v0.1 promise | Locked |
+| Non-goals | Locked |
+| Broader architecture | Non-binding roadmap only |
+| Security-boundary claims | Forbidden in v0.1 |
+| Next step after code | Real team + 14-day evidence |
+
+**Approved to implement against this document only.**
