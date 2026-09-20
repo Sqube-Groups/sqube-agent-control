@@ -1,0 +1,43 @@
+# Python
+.env
+.env.local
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Node
+nodejs/node_modules/
+nodejs/dist/
+
+# Rust
+rust/target/
+
+# Ledgers / local artifacts
+*.sqlite3
+examples_ledger.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Internal / local-only docs (never commit)
+docs_internal_never_commit/
+docs-never-commit/
+.local-docs/
+**/never-commit/
+# Legacy spec path (content lives in website/docs/)
+docs/project md files/
+
+# Docusaurus
+website/node_modules/
+website/build/
+website/.docusaurus/
