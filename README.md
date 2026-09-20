@@ -143,9 +143,14 @@ cd rust && cargo test
 
 **CI** runs on pull requests and pushes targeting `main`; **GitHub Pages** deploys only on pushes to `main`; **PyPI/npm releases** run only for `v*.*.*` tags whose commit is on `main`.
 
-Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main`:
+Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main` (project site — path includes the repo name):
 
-**https://sqube-groups.github.io/sqube-agent-control/**
+| Use | URL |
+|-----|-----|
+| **Repo About / Website field** | `https://sqube-groups.github.io/sqube-agent-control/` |
+| **Docs home (intro)** | `https://sqube-groups.github.io/sqube-agent-control/docs/intro` |
+
+Do **not** link `https://sqube-groups.github.io/docs/...` — that is the org/user site root without the `/sqube-agent-control/` prefix. Unless you configure a custom domain at the org root, docs live only under `/sqube-agent-control/`.
 
 **Maintainers:** [Enable GitHub Pages (GitHub Actions source)](website/docs/deploy-pages.md), docs deploy behavior, and [release tag commands](website/docs/deploy-pages.md#release-tags-pypi--npm) — see [`website/docs/deploy-pages.md`](website/docs/deploy-pages.md).
 

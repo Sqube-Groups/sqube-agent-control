@@ -25,6 +25,16 @@ Pages cannot be turned on from this repo’s workflows alone; a maintainer must 
 - **What:** CI builds the Docusaurus site and deploys to GitHub Pages.
 - **URL:** [https://sqube-groups.github.io/sqube-agent-control/](https://sqube-groups.github.io/sqube-agent-control/)
 
+### Canonical URLs (GitHub About, README, package metadata)
+
+This repo uses a **project** GitHub Pages site (`baseUrl: /sqube-agent-control/` in `website/docusaurus.config.js`). Set the repository **About → Website** field to:
+
+**https://sqube-groups.github.io/sqube-agent-control/**
+
+Docs entry point: **https://sqube-groups.github.io/sqube-agent-control/docs/intro**
+
+`https://sqube-groups.github.io/docs/intro` (no repo prefix) is **wrong** for this deployment—it would only work with an org/user site at the domain root or a custom domain configured differently.
+
 Docs deploy does **not** run for merges to `staging` or other branches—only `main`.
 
 Local preview:
@@ -77,4 +87,35 @@ The Node package is published as the **unscoped** name `sqube-agent-guard` (same
 
 The workflow runs only for tags matching `v*.*.*`. The tagged commit must be on `main`; tags on other branches are rejected.
 
+Before each release, bump the package version in **`pyproject.toml`** (Python) and **`nodejs/package.json`** (npm). PyPI and npm reject uploads when that version already exists; Git tags alone do not change the published version.
+
 To remove a mistaken local tag before pushing: `git tag -d v0.1.0`. To delete a remote tag (use carefully): `git push origin --delete v0.1.0`.
+
+### PyPI setup and troubleshooting
+
+The Release workflow builds from the repo root (`python -m build` → `dist/`) and publishes **`sqube-agent-guard`** (see `pyproject.toml`) using an API token—not PyPI trusted publishing (OIDC).
+
+#### One-time PyPI configuration
+
+1. Sign in at [pypi.org](https://pypi.org/) (create an account if needed).
+2. **Account settings** → **API tokens** → **Add API token**.
+   - **Scope:** *Entire account* (simplest), or *Project* scoped to `sqube-agent-guard` after the project exists.
+   - Copy the token (starts with `pypi-`); PyPI shows it only once.
+3. In GitHub: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+   - Name: **`PYPI_API_TOKEN`** (exact spelling)
+   - Value: the `pypi-…` token
+4. First successful upload creates the **`sqube-agent-guard`** project on PyPI; you do not need to register the name manually beforehand.
+
+The workflow passes the secret to `pypa/gh-action-pypi-publish` as the **`password`** input (username defaults to `__token__`, which PyPI requires for API tokens).
+
+#### Common Release workflow failures (Python job)
+
+| Symptom / log hint | Likely cause | What to do |
+|--------------------|--------------|------------|
+| `403 Forbidden` / invalid or missing credentials | Secret missing, wrong name, revoked token, or project-scoped token for a project that does not exist yet | Add or recreate **`PYPI_API_TOKEN`**; use entire-account scope for the first upload |
+| `400 … file already exists` / `duplicate` | **`version` in `pyproject.toml`** already on PyPI (common when re-running the same tag or workflow) | Bump `version` in `pyproject.toml`, merge to `main`, tag again—or rely on **`skip-existing: true`** in the workflow to no-op duplicate files on re-runs (does not replace a bad upload) |
+| Publish step fails immediately after pulling the Docker image | Often the upload error is in the next log lines; expand the **Publish to PyPI** step | Read the full step output for HTTP status and message |
+| Build step fails | Missing `src/` layout, invalid `pyproject.toml`, or `pip install build` / network issues | Run locally: `pip install build && python -m build` and fix reported errors |
+| Job never runs | Tag not on `main`, or tag pattern not `v*.*.*` | Tag a commit that is on `main`; use e.g. `v0.1.1` |
+
+Re-running **Release** for the same version without bumping `pyproject.toml` used to fail on PyPI; the workflow sets **`skip-existing: true`** so idempotent re-runs skip wheels/sdists that are already published. npm does not have the same skip behavior—duplicate **`nodejs/package.json`** versions still fail until the version is bumped.
