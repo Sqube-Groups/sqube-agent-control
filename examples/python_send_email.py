@@ -1,6 +1,6 @@
 """Example B — send email (staged; no real SMTP)."""
 
-from sqube_guard import Decision, ExecutionGuard
+from sqube_agent_guard import Decision, ExecutionGuard
 
 
 def send_email(to: str, subject: str, body: str) -> str:

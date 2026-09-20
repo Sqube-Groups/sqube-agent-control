@@ -1,5 +1,5 @@
 {
-  "name": "@sqube/guard",
+  "name": "@sqube/agent-guard",
   "version": "0.1.0",
   "description": "Developer-side execution guardrail (v0.1 experiment)",
   "license": "Apache-2.0",

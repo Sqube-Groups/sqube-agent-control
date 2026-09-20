@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from sqube_guard import Decision, ExecutionGuard
+from sqube_agent_guard import Decision, ExecutionGuard
 
 ALLOWLIST = {tempfile.gettempdir()}
 

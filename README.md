@@ -16,16 +16,16 @@ Do not use messaging like “secure your agents,” “enterprise control plane,
 
 | Language | Package | Path |
 |----------|---------|------|
-| Python | `sqube-guard` (PyPI) | `src/sqube_guard/` |
-| Node.js | `@sqube/guard` (npm) | `nodejs/` |
-| Rust | `sqube-guard` (crates.io) | `rust/` |
+| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
+| Node.js | `@sqube/agent-guard` (npm) | `nodejs/` |
+| Rust | `sqube-agent-guard` (crates.io) | `rust/` |
 
 All three implement the same v0.1 contract documented on **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)** (source: [`website/docs/v0.1-spec.md`](website/docs/v0.1-spec.md)).
 
 ## Quick start (Python)
 
 ```python
-from sqube_guard import ExecutionGuard, Decision
+from sqube_agent_guard import ExecutionGuard, Decision
 
 
 def policy(action, resource, agent_id, **ctx):
@@ -48,7 +48,7 @@ delete_file("/tmp/example.txt")
 ## Quick start (Node.js)
 
 ```typescript
-import { Decision, ExecutionGuard } from "@sqube/guard";
+import { Decision, ExecutionGuard } from "@sqube/agent-guard";
 
 const guard = new ExecutionGuard({
   policy: (action) =>
@@ -66,7 +66,7 @@ await deleteFile("/tmp/example.txt");
 ## Quick start (Rust)
 
 ```rust
-use sqube_guard::{Decision, ExecutionGuard, WrapOptions};
+use sqube_agent_guard::{Decision, ExecutionGuard, WrapOptions};
 
 let guard = ExecutionGuard::with_default_policy().with_ledger_path("sqube_ledger.sqlite3");
 
@@ -95,9 +95,9 @@ Policies are application-defined callables. No LLM in the decision path for v0.1
 ## Installation
 
 ```bash
-pip install sqube-guard
-npm install @sqube/guard
-cargo add sqube-guard
+pip install sqube-agent-guard
+npm install @sqube/agent-guard
+cargo add sqube-agent-guard
 ```
 
 Packaging and releases are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`, `CARGO_REGISTRY_TOKEN`.
@@ -144,7 +144,7 @@ Keep private notes outside the repo under `docs_internal_never_commit/` (gitigno
 ## Project structure
 
 ```text
-src/sqube_guard/     # Python SDK
+src/sqube_agent_guard/     # Python SDK
 nodejs/              # TypeScript / npm SDK
 rust/                # Rust crate
 tests/               # Python tests

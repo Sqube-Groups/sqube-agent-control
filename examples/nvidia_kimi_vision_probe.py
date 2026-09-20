@@ -2,7 +2,7 @@
 """
 Optional manual probe for NVIDIA Integrate chat completions (vision).
 
-NOT part of sqube-guard policy or unit tests. Requires: pip install requests
+NOT part of sqube-agent-guard policy or unit tests. Requires: pip install requests
 (or: pip install -e ".[probes]", which loads repo-root `.env` via python-dotenv).
 
 Quoted values in `.env` are supported (surrounding quotes are stripped).

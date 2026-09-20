@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from sqube_guard import Decision, ExecutionGuard
-from sqube_guard.exceptions import SqubeBlockedError, SqubeDeniedError, SqubeGuardError
-from sqube_guard.models import ActionStatus
-from sqube_guard.policy import default_policy
+from sqube_agent_guard import Decision, ExecutionGuard
+from sqube_agent_guard.exceptions import SqubeBlockedError, SqubeDeniedError, SqubeGuardError
+from sqube_agent_guard.models import ActionStatus
+from sqube_agent_guard.policy import default_policy
 
 
 def _ledger_path(tmp: Path) -> str:
@@ -218,6 +218,6 @@ def test_default_policy_high_risk_requires_approval(tmp_path: Path) -> None:
 
 
 def test_redaction_email(tmp_path: Path) -> None:
-    from sqube_guard.redaction import redact_value
+    from sqube_agent_guard.redaction import redact_value
 
     assert "cu***@example.com" in redact_value({"to": "customer@example.com"})

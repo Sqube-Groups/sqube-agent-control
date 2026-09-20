@@ -1,4 +1,4 @@
-from sqube_guard.redaction import redact_value
+from sqube_agent_guard.redaction import redact_value
 
 
 def test_long_string_truncated() -> None:

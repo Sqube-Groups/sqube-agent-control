@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqube_guard.models import Decision
+from sqube_agent_guard.models import Decision
 
 HIGH_RISK_ACTIONS = frozenset({"db_mutation", "send_email", "file_delete"})
 

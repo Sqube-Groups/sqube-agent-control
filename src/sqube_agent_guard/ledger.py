@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from sqube_guard.models import ActionRecord
+from sqube_agent_guard.models import ActionRecord
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS execution_records (

@@ -16,9 +16,9 @@ title: Introduction
 
 | Language | Package | Source |
 |----------|---------|--------|
-| Python | `sqube-guard` | `src/sqube_guard/` |
-| Node.js | `@sqube/guard` | `nodejs/` |
-| Rust | `sqube-guard` | `rust/` |
+| Python | `sqube-agent-guard` | `src/sqube_agent_guard/` |
+| Node.js | `@sqube/agent-guard` | `nodejs/` |
+| Rust | `sqube-agent-guard` | `rust/` |
 
 All three implement the same v0.1 contract documented in the [v0.1 specification](./v0.1-spec).
 

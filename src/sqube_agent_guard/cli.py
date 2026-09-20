@@ -8,7 +8,7 @@ import sys
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="sqube-guard", description="Sqube Execution Guard CLI")
+    parser = argparse.ArgumentParser(prog="sqube-agent-guard", description="Sqube Execution Guard CLI")
     parser.add_argument(
         "ledger",
         nargs="?",

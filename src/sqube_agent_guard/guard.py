@@ -9,12 +9,12 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from sqube_guard.approval import prompt_cli_approval
-from sqube_guard.exceptions import SqubeBlockedError, SqubeDeniedError, SqubeGuardError
-from sqube_guard.ledger import Ledger
-from sqube_guard.models import ActionRecord, ActionStatus, Decision
-from sqube_guard.policy import default_policy
-from sqube_guard.redaction import redact_value
+from sqube_agent_guard.approval import prompt_cli_approval
+from sqube_agent_guard.exceptions import SqubeBlockedError, SqubeDeniedError, SqubeGuardError
+from sqube_agent_guard.ledger import Ledger
+from sqube_agent_guard.models import ActionRecord, ActionStatus, Decision
+from sqube_agent_guard.policy import default_policy
+from sqube_agent_guard.redaction import redact_value
 
 OnErrorMode = Literal["fail_open", "fail_closed"]
 

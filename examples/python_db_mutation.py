@@ -1,6 +1,6 @@
 """Example A — DB mutation (staged; no real DB)."""
 
-from sqube_guard import Decision, ExecutionGuard
+from sqube_agent_guard import Decision, ExecutionGuard
 
 
 def policy(action, resource, agent_id, **_) -> Decision:

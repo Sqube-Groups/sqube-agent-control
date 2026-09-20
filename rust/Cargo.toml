@@ -1,5 +1,8 @@
 [package]
-name = "sqube-guard"
+name = "sqube-agent-guard"
+
+[lib]
+name = "sqube_agent_guard"
 version = "0.1.0"
 edition = "2021"
 description = "Developer-side execution guardrail (v0.1 experiment)"
