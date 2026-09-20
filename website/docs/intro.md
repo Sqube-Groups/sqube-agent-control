@@ -12,15 +12,20 @@ title: Introduction
 
 **Experimental — API may change.** SDK wrapping is bypassable. This is not a replacement for IAM, gateways, or production security controls.
 
+## What it does
+
+- **Policy hook** — Your code supplies a deterministic policy; no LLM in the decision path for v0.1.
+- **Decisions** — `ALLOW`, `BLOCK`, or `REQUIRE_APPROVAL` before the wrapped action runs.
+- **Ledger** — Append-only SQLite record of decisions for audit and experiments.
+- **SDKs** — Python (PyPI), Node.js (npm), and Rust (build from the repo).
+
 ## SDKs
 
 | Language | Package | Source |
 |----------|---------|--------|
-| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
-| Rust | `sqube-agent-guard` (build from repo) | `rust/` |
-
-All three implement the same v0.1 contract documented in the [v0.1 specification](./v0.1-spec).
+| Python | `sqube-agent-guard` (PyPI) | [`src/sqube_agent_guard/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/src/sqube_agent_guard) |
+| Node.js | `sqube-agent-guard` (npm) | [`nodejs/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/nodejs) |
+| Rust | `sqube-agent-guard` (build from repo) | [`rust/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/rust) |
 
 ## Installation
 
@@ -42,6 +47,5 @@ After a future crates.io publish, `cargo add sqube-agent-guard` will apply; unti
 
 ## Where to go next
 
-- Read the full **[v0.1 spec](./v0.1-spec)** — product promise, non-goals, ledger schema, tests required, and validation metrics.
-- See the [GitHub README](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/README.md) for local development, contributing, and optional LLM probe examples.
-- Clone the [GitHub repository](https://github.com/Sqube-Groups/sqube-agent-control) for SDK source and examples (including optional LLM probe scripts under `examples/`).
+- [GitHub repository](https://github.com/Sqube-Groups/sqube-agent-control) — source, examples, and issue tracker.
+- [README on GitHub](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/README.md) — quick starts, development, tests, and optional LLM probe examples.

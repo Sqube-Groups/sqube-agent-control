@@ -20,7 +20,7 @@ Do not use messaging like “secure your agents,” “enterprise control plane,
 | Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
 | Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` |
 
-All three implement the same v0.1 contract documented on **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)** (source: [`website/docs/v0.1-spec.md`](website/docs/v0.1-spec.md)).
+All three share the same v0.1 execution-guard behavior (deterministic policy, optional approval, SQLite ledger). Public overview: **[GitHub Pages intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
 
 ## Quick start (Python)
 
@@ -132,7 +132,6 @@ cd rust && cargo test
 | Use | URL |
 |-----|-----|
 | **Docs home (intro)** | [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro) |
-| **v0.1 specification** | [https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec) |
 | **Repo About / Website field** | [https://sqube-groups.github.io/sqube-agent-control/](https://sqube-groups.github.io/sqube-agent-control/) |
 
 Local docs preview: `cd website && npm ci && npm start`

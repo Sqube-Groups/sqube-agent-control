@@ -1,6 +1,7 @@
----
-sidebar_position: 2
-title: v0.1 specification
+# Internal v0.1 specification (not published)
+
+Copy this file to `v0.1-spec.md` in this directory (`docs_internal_never_commit/`, gitignored). Do **not** place it under `website/docs/` — GitHub Pages must not expose this contract.
+
 ---
 
 # Sqube Execution Guard — v0.1 Spec

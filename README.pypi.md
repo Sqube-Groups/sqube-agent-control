@@ -35,7 +35,6 @@ delete_file("/tmp/example.txt")
 
 ## Documentation
 
-- **v0.1 spec:** [https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)
 - **Docs intro:** [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)
 - **Source & examples:** [https://github.com/Sqube-Groups/sqube-agent-control](https://github.com/Sqube-Groups/sqube-agent-control)
 

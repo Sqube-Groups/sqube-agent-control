@@ -32,10 +32,11 @@ examples_ledger.sqlite3
 # Internal / local-only docs (never commit)
 docs_internal_never_commit/*
 !docs_internal_never_commit/MAINTAINER.md.template
+!docs_internal_never_commit/v0.1-spec.md.template
 docs-never-commit/
 .local-docs/
 **/never-commit/
-# Legacy spec path (content lives in website/docs/)
+# Legacy spec path (use docs_internal_never_commit/v0.1-spec.md.template locally)
 docs/project md files/
 
 # Docusaurus

@@ -2,6 +2,16 @@
 
 Copy this file to `MAINTAINER.md` in this directory (gitignored). Do not commit secrets or tokens.
 
+## Internal v0.1 specification
+
+The full v0.1 implementation contract is **not** published on GitHub Pages. Maintainers keep a local copy only:
+
+```bash
+cp docs_internal_never_commit/v0.1-spec.md.template docs_internal_never_commit/v0.1-spec.md
+```
+
+Never add `v0.1-spec.md` under `website/docs/`.
+
 ## Registry README policy
 
 Public package readmes must **not** use the repository root `README.md`:
