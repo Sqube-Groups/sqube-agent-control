@@ -141,6 +141,8 @@ cd rust && cargo test
 
 ## Documentation
 
+**CI** runs on pull requests and pushes targeting `main`; **GitHub Pages** deploys only on pushes to `main`; **PyPI/npm releases** run only for `v*.*.*` tags whose commit is on `main`.
+
 Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main`:
 
 **https://sqube-groups.github.io/sqube-agent-control/**

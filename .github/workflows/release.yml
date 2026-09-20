@@ -1,5 +1,9 @@
 name: Release
 
+# Publishes to PyPI and npm only when a semver tag (v*.*.*) is pushed and the
+# tagged commit is on main. Tag from main after merge; tags on other branches
+# are rejected by the assert-on-main job.
+
 on:
   push:
     tags:
@@ -9,7 +13,19 @@ permissions:
   contents: read
 
 jobs:
+  assert-on-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tagged commit is on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+
   python:
+    needs: assert-on-main
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +40,7 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
   node:
+    needs: assert-on-main
     runs-on: ubuntu-latest
     defaults:
       run:

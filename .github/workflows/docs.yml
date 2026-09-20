@@ -1,5 +1,7 @@
 name: Deploy docs to GitHub Pages
 
+# Deploys only on pushes to main (not staging, feature branches, or PRs).
+
 on:
   push:
     branches: [main]
