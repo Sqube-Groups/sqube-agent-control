@@ -147,6 +147,8 @@ Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main`:
 
 **https://sqube-groups.github.io/sqube-agent-control/**
 
+**Maintainers:** [Enable GitHub Pages (GitHub Actions source)](website/docs/deploy-pages.md), docs deploy behavior, and [release tag commands](website/docs/deploy-pages.md#release-tags-pypi--npm) — see [`website/docs/deploy-pages.md`](website/docs/deploy-pages.md).
+
 Run locally:
 
 ```bash
