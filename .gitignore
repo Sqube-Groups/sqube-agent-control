@@ -1,5 +1,6 @@
 # Python
 .env
+.env.local
 __pycache__/
 *.py[cod]
 .pytest_cache/
