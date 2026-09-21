@@ -6,7 +6,6 @@
 
 Sqube Execution Guard (v0.1) wraps a consequential action, deterministically decides `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`, optionally pauses for a human via CLI, and writes an append-only SQLite execution record.
 
-Do not use messaging like “secure your agents,” “enterprise control plane,” or “prevent all unauthorized actions.”
 
 ## Status
 
