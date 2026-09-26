@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Registry metadata refresh (npm README/keywords); republish requires new semver because 1.0.0 is immutable on npm/PyPI.
+
 ## 1.0.0 (unreleased)
 
 ### Release hardening (in progress on `feat/v1.0-core`)

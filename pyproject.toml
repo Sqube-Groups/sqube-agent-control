@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sqube-agent-guard"
-version = "1.0.0"
+version = "1.0.1"
 description = "Open-source execution authorization and control infrastructure for AI agents"
 readme = "README.pypi.md"
 license = "Apache-2.0"
