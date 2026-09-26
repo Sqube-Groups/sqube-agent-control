@@ -9,7 +9,7 @@
 - CLI `approvals grant|deny|pending`; `resume_after_approval` with one-time approval consume
 - Correlation/root/session IDs persisted on execution records
 - E2E demo: `examples/python/agent_workflow_demo.py`
-- Maintainer security checklist: `docs_internal_never_commit/SECURITY_REVIEW_v1.md.template`
+- Maintainer security checklist (local-only template, not in git)
 
 ### Python (reference SDK)
 
