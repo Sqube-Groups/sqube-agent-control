@@ -1,5 +1,55 @@
 const content = document.getElementById("content");
 const buttons = document.querySelectorAll("nav button");
+const liveStatus = document.getElementById("live-status");
+let currentView = "overview";
+let eventSource = null;
+
+function setLiveState(state) {
+  if (!liveStatus) return;
+  liveStatus.className = `live live-${state}`;
+  liveStatus.textContent =
+    state === "live" ? "Live" : state === "reconnecting" ? "Reconnecting" : "Offline";
+}
+
+function startEventStream() {
+  if (eventSource) eventSource.close();
+  const key = localStorage.getItem("sqube_api_key");
+  const streamUrl = key
+    ? `/api/v1/events/stream?access_token=${encodeURIComponent(key)}`
+    : "/api/v1/events/stream";
+  eventSource = new EventSource(streamUrl);
+  setLiveState("live");
+  eventSource.onopen = () => setLiveState("live");
+  eventSource.onerror = () => {
+    setLiveState("reconnecting");
+    eventSource.close();
+    setTimeout(startEventStream, 3000);
+  };
+  eventSource.onmessage = () => refreshCurrentView();
+  const types = [
+    "execution.created",
+    "execution.updated",
+    "execution.succeeded",
+    "execution.failed",
+    "execution.blocked",
+    "approval.required",
+    "approval.granted",
+    "approval.denied",
+    "agent.registered",
+    "policy.changed",
+  ];
+  types.forEach((t) => {
+    eventSource.addEventListener(t, () => refreshCurrentView());
+  });
+}
+
+async function refreshCurrentView() {
+  try {
+    await views[currentView]();
+  } catch {
+    /* REST remains source of truth; ignore transient SSE refresh errors */
+  }
+}
 
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
@@ -160,6 +210,7 @@ const views = {
 };
 
 async function load(view) {
+  currentView = view;
   buttons.forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   try {
     await views[view]();
@@ -170,3 +221,4 @@ async function load(view) {
 
 buttons.forEach((b) => b.addEventListener("click", () => load(b.dataset.view)));
 load("overview");
+startEventStream();

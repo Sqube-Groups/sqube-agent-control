@@ -10,10 +10,14 @@ Sqube separates **control plane**, **runtime data plane**, and **observability**
 ## Product loop
 
 ```text
-Agent → Sqube SDK → Policy → ALLOW / BLOCK / APPROVAL
-  → Execution → Ledger (evidence) → OTel (optional)
-  → Control plane / Dashboard (visibility)
+Agent SDK → Policy → Execution → Local ledger (authoritative evidence)
+  ├→ OTel exporter → observability backend (optional)
+  └→ Durable export queue → HTTP batch ingest → Control plane
+        ├→ SSE → Dashboard (live)
+        └→ Webhooks → external systems
 ```
+
+See [Event ingestion](./event-ingestion.md) for export, SSE, and webhook behavior.
 
 **Invariant:** no successful controlled side effect without a preceding `ALLOW` or approved decision recorded for that execution.
 

@@ -6,6 +6,7 @@ const sidebars = {
     'concepts',
     'architecture',
     'control-plane',
+    'event-ingestion',
     'policies',
     'cli',
     'observability',

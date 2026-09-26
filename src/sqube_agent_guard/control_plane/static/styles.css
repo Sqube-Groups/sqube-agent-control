@@ -47,3 +47,10 @@ th, td {
 .error {
   color: #f87171;
 }
+.live {
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+.live-live { color: #4ade80; }
+.live-reconnecting { color: #fbbf24; }
+.live-offline { color: #9aa8b8; }

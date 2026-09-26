@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+import json
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -32,6 +34,33 @@ class PolicyBody(BaseModel):
 class ApprovalDecisionBody(BaseModel):
     decided_by: str = "operator"
     reason: str | None = None
+
+
+class IngestEventBody(BaseModel):
+    event_id: str
+    execution_id: str
+    agent_id: str
+    event_type: str
+    timestamp: str
+    action: str | None = None
+    resource: str | None = None
+    decision: str | None = None
+    status: str | None = None
+    correlation_id: str | None = None
+    root_execution_id: str | None = None
+    policy_id: str | None = None
+
+
+class EventBatchBody(BaseModel):
+    """Lenient batch body — per-event validation happens in the store for partial success."""
+
+    events: list[dict[str, Any]]
+
+
+class WebhookDestinationBody(BaseModel):
+    url: str
+    secret: str
+    event_types: list[str]
 
 
 def create_app(store: ControlPlaneStore) -> FastAPI:
@@ -156,6 +185,45 @@ def create_app(store: ControlPlaneStore) -> FastAPI:
             approval_id, body.decided_by, reason, now
         )
         return {"status": "denied", "execution_id": execution_id}
+
+    @app.post("/api/v1/events/batch")
+    def ingest_events(body: EventBatchBody, _: None = Depends(auth)) -> dict[str, object]:
+        return store.ingest_events_batch(body.events)
+
+    @app.get("/api/v1/events/stream")
+    def events_stream(request: Request, _: None = Depends(auth)) -> StreamingResponse:
+        last_event_id = request.headers.get("Last-Event-ID")
+        replay_from = int(last_event_id) if last_event_id and last_event_id.isdigit() else 0
+
+        def _format(msg: dict[str, object]) -> str:
+            return (
+                f"id: {msg['id']}\n"
+                f"event: {msg['type']}\n"
+                f"data: {json.dumps(msg['data'])}\n\n"
+            )
+
+        def event_generator():
+            last_id = replay_from
+            for msg in store.bus.replay_after(replay_from):
+                last_id = msg["id"]
+                yield _format(msg)
+            while True:
+                for msg in store.bus.replay_after(last_id):
+                    last_id = msg["id"]
+                    yield _format(msg)
+                yield ": keepalive\n\n"
+                store.bus.wait_for_updates(last_id, timeout=15.0)
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    @app.post("/api/v1/webhooks/destinations")
+    def add_webhook(body: WebhookDestinationBody, _: None = Depends(auth)) -> dict[str, object]:
+        dest = store.webhooks.add_destination(body.url, body.secret, body.event_types)
+        return {k: v for k, v in dest.items() if k != "secret"}
+
+    @app.get("/api/v1/webhooks/destinations")
+    def list_webhooks(_: None = Depends(auth)) -> list[dict[str, object]]:
+        return store.webhooks.list_destinations()
 
     static_dir = Path(__file__).resolve().parent / "static"
     if static_dir.is_dir():

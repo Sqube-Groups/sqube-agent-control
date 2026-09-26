@@ -35,7 +35,9 @@ If `SQUBE_API_KEY` is unset, the API accepts local requests without a key (devel
 | Approvals | `GET /api/v1/approvals/pending`, grant/deny POST |
 | Fleet | `GET /api/v1/overview` |
 
-Execution evidence is read from the shared SQLite ledger in `--data-dir`. The ledger remains the source of truth; the control plane does not replace SDK authorization.
+Execution evidence is read from the shared SQLite ledger in `--data-dir` **and** from `POST /api/v1/events/batch` (idempotent remote ingestion). The **local ledger** remains the runtime source of truth; the control plane is visibility and administration, not authorization.
+
+Realtime: `GET /api/v1/events/stream` (SSE). See [Event ingestion](./event-ingestion).
 
 ## Architecture
 
