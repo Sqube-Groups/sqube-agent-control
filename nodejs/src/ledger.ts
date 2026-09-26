@@ -307,6 +307,37 @@ export class Ledger {
       .get(approvalId) as ApprovalRecord | undefined;
   }
 
+  denyApproval(
+    approvalId: string,
+    decidedBy: string,
+    reason: string,
+    nowIso: string
+  ): string {
+    const deny = this.db.transaction(() => {
+      const row = this.getApproval(approvalId);
+      if (!row) throw new SqubeApprovalError(approvalId, "not found");
+      if (row.status !== "PENDING") {
+        throw new SqubeApprovalError(approvalId, `status is ${row.status}`);
+      }
+      const cur = this.db
+        .prepare(
+          "UPDATE approval_requests SET status = 'DENIED', decided_at = ?, decided_by = ?, decision_reason = ? WHERE approval_id = ? AND status = 'PENDING'"
+        )
+        .run(nowIso, decidedBy, reason, approvalId);
+      if (cur.changes !== 1) {
+        throw new SqubeApprovalError(approvalId, "concurrent decision lost race");
+      }
+      this.transitionExecution(
+        row.execution_id,
+        ActionStatus.WAITING_APPROVAL,
+        ActionStatus.DENIED,
+        { approval_reason: reason, completed_at: nowIso }
+      );
+      return row.execution_id;
+    });
+    return deny();
+  }
+
   grantApproval(approvalId: string, decidedBy: string, nowIso: string): string {
     const grant = this.db.transaction(() => {
       const row = this.getApproval(approvalId);

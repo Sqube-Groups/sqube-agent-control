@@ -6,6 +6,7 @@ Python is the **reference implementation**. Other SDKs must match these artifact
 |----------|---------|
 | `fixtures/*.json` | Default policy decisions (ALLOW / BLOCK / REQUIRE_APPROVAL) |
 | `v1_semantics.json` | Execution status machine + illegal transitions + deferred approval flow |
+| `deferred_approval.json` | End-to-end deferred grant → resume scenario (all SDKs) |
 
 ## Running contract tests
 
@@ -21,8 +22,8 @@ cd rust && cargo test   # contract_fixtures + contract_semantics
 |------------|--------|------|------|
 | Policy fixtures | yes | yes | yes |
 | State machine contract | yes | yes | yes |
-| `ExecutionEngine` + deferred approvals | yes | yes | guard-level only |
-| Full ledger + MCP | yes | partial | partial |
+| `ExecutionEngine` sync + deferred | yes | yes | yes |
+| State machine contract | yes | yes | yes |
+| Hash-chained events (ledger) | yes | yes | partial (records + approvals) |
 
-Node: use `ExecutionEngine` with `approvalMode: "deferred"` for v1 execution semantics.  
-Rust: state machine + policy contract; full engine deferred path is not required for v1.0.
+All three SDKs run the same `deferred_approval.json` integration scenario in CI.

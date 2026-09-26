@@ -1,0 +1,14 @@
+{
+  "name": "deferred_send_email",
+  "context": {
+    "agent_id": "bot",
+    "action": "send_email",
+    "resource": "user@example.com",
+    "parameters": { "to": "user@example.com" }
+  },
+  "grant_at": "2026-01-02T00:00:00+00:00",
+  "expected_after_pending_status": "WAITING_APPROVAL",
+  "expected_after_grant_status": "APPROVED",
+  "expected_final_status": "SUCCEEDED",
+  "resume_result": "sent"
+}

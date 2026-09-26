@@ -10,7 +10,14 @@ import { hashPayload } from "./hashing.js";
 import { Ledger } from "./ledger.js";
 import { defaultPolicy } from "./policy.js";
 import { redactValue } from "./redaction.js";
-import { ActionStatus, Decision, type PolicyFn } from "./types.js";
+import { promptCliApproval } from "./approval.js";
+import {
+  ActionStatus,
+  Decision,
+  type ApprovalFn,
+  type OnErrorMode,
+  type PolicyFn,
+} from "./types.js";
 
 export type ApprovalMode = "sync" | "deferred";
 
@@ -38,23 +45,33 @@ export class ExecutionEngine {
   private policy: PolicyFn;
   private approvalMode: ApprovalMode;
   private approvalTimeoutSeconds: number;
+  private approvalFn: ApprovalFn;
+  private onError: OnErrorMode;
 
   constructor(opts: {
     policy?: PolicyFn;
     ledgerPath?: string;
     approvalMode?: ApprovalMode;
     approvalTimeoutSeconds?: number;
+    approvalFn?: ApprovalFn;
+    onError?: OnErrorMode;
   } = {}) {
     this.ledger = new Ledger(opts.ledgerPath ?? "sqube_ledger.sqlite3");
     this.policy = opts.policy ?? defaultPolicy;
     this.approvalMode = opts.approvalMode ?? "sync";
     this.approvalTimeoutSeconds = opts.approvalTimeoutSeconds ?? 300;
+    this.approvalFn = opts.approvalFn ?? promptCliApproval;
+    this.onError = opts.onError ?? "fail_closed";
   }
 
   simulate(ctx: ExecutionContext): Decision {
     return this.policy(ctx.action, ctx.resource, ctx.agentId, {
       parameters: ctx.parameters,
     });
+  }
+
+  policyName(): string {
+    return this.policy.name || "anonymous_policy";
   }
 
   async runControlled<T>(ctx: ExecutionContext, fn: () => T | Promise<T>): Promise<T> {
@@ -97,7 +114,25 @@ export class ExecutionEngine {
       utcNowIso()
     );
 
-    const decision = this.simulate(ctx);
+    let decision: Decision;
+    try {
+      decision = this.simulate(ctx);
+    } catch (err) {
+      if (this.onError === "fail_open") {
+        return this.beginExecute(ctx, fn);
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      this.ledger.transitionExecution(
+        ctx.executionId,
+        ActionStatus.EVALUATED,
+        ActionStatus.FAILED,
+        {
+          error_message: `policy_error: ${message}`,
+          completed_at: utcNowIso(),
+        }
+      );
+      throw new SqubeGuardError(`Policy evaluation failed: ${message}`);
+    }
     this.ledger.updateStatus(ctx.executionId, { decision });
     this.ledger.appendEvent(
       ctx.executionId,
@@ -145,10 +180,70 @@ export class ExecutionEngine {
         );
         throw new SqubeApprovalPendingError(ctx.executionId, approvalId);
       }
-      throw new SqubeGuardError("sync approval not implemented on ExecutionEngine; use ExecutionGuard");
+      return this.syncApprovalPath(ctx, fn, paramsHash, summary);
     }
 
     return this.beginExecute(ctx, fn);
+  }
+
+  cancelExecution(executionId: string, reason = "cancelled"): void {
+    const row = this.ledger.getExecution(executionId);
+    if (!row) throw new SqubeGuardError(`unknown execution ${executionId}`);
+    const now = utcNowIso();
+    if (row.status === ActionStatus.WAITING_APPROVAL) {
+      this.ledger.transitionExecution(
+        executionId,
+        ActionStatus.WAITING_APPROVAL,
+        ActionStatus.CANCELLED,
+        { completed_at: now, approval_reason: reason }
+      );
+      return;
+    }
+    if (row.status === ActionStatus.APPROVED) {
+      this.ledger.transitionExecution(
+        executionId,
+        ActionStatus.APPROVED,
+        ActionStatus.CANCELLED,
+        { completed_at: now, approval_reason: reason }
+      );
+      return;
+    }
+    throw new SqubeGuardError(`cannot cancel execution in status ${row.status}`);
+  }
+
+  private async syncApprovalPath<T>(
+    ctx: ExecutionContext,
+    fn: () => T | Promise<T>,
+    paramsHash: string,
+    summary: string
+  ): Promise<T> {
+    this.ledger.transitionExecution(
+      ctx.executionId,
+      ActionStatus.EVALUATED,
+      ActionStatus.WAITING_APPROVAL
+    );
+    const { approved, approvedBy, reason } = await this.approvalFn({
+      executionId: ctx.executionId,
+      agentId: ctx.agentId,
+      action: ctx.action,
+      resource: ctx.resource,
+      summary,
+      timeoutSeconds: this.approvalTimeoutSeconds,
+    });
+    const now = utcNowIso();
+    if (!approved) {
+      const toStatus =
+        reason === "timeout" ? ActionStatus.EXPIRED : ActionStatus.DENIED;
+      this.ledger.transitionExecution(ctx.executionId, ActionStatus.WAITING_APPROVAL, toStatus, {
+        approval_reason: reason,
+        completed_at: now,
+      });
+      throw new SqubeDeniedError(ctx.executionId, reason ?? "denied");
+    }
+    this.ledger.transitionExecution(ctx.executionId, ActionStatus.WAITING_APPROVAL, ActionStatus.APPROVED, {
+      approved_by: approvedBy,
+    });
+    return this.beginExecute(ctx, fn, ActionStatus.APPROVED);
   }
 
   async resumeAfterApproval<T>(
@@ -190,12 +285,12 @@ export class ExecutionEngine {
     return this.runFnBody(ctx, fn);
   }
 
-  private async beginExecute<T>(ctx: ExecutionContext, fn: () => T | Promise<T>): Promise<T> {
-    this.ledger.transitionExecution(
-      ctx.executionId,
-      ActionStatus.EVALUATED,
-      ActionStatus.EXECUTING
-    );
+  private async beginExecute<T>(
+    ctx: ExecutionContext,
+    fn: () => T | Promise<T>,
+    fromStatus: ActionStatus = ActionStatus.EVALUATED
+  ): Promise<T> {
+    this.ledger.transitionExecution(ctx.executionId, fromStatus, ActionStatus.EXECUTING);
     this.ledger.appendEvent(
       ctx.executionId,
       EventType.ACTION_STARTED,
