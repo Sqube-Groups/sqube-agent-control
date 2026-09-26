@@ -7,7 +7,10 @@ import pytest
 
 from sqube_agent_guard.execution.engine import ExecutionEngine, context_from_wrap
 from sqube_agent_guard.policy import default_policy
+from sqube_agent_guard.policy.bundle import load_policy_bundle
 from sqube_agent_guard.policy.engine import CallablePolicy
+
+ORG_BUNDLE = Path(__file__).resolve().parents[1] / "fixtures" / "policies" / "org_default.json"
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -25,3 +28,7 @@ def test_fixture_decision(path: Path) -> None:
     )
     result = engine.simulate(ctx)
     assert result.decision.value == data["expected_decision"], data["name"]
+
+    bundle = load_policy_bundle(ORG_BUNDLE)
+    bundle_result = bundle.evaluate(ctx)
+    assert bundle_result.decision.value == data["expected_decision"], data["name"]

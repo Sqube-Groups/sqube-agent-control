@@ -3,6 +3,7 @@ from sqube_agent_guard.models import ActionStatus, Decision
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.engine import ExecutionEngine
 from sqube_agent_guard.identity.models import AgentIdentity, Principal
+from sqube_agent_guard.policy.bundle import load_policy_bundle
 from sqube_agent_guard.policy.engine import CallablePolicy, PolicyEvaluation, RulePolicy
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "CallablePolicy",
     "RulePolicy",
     "PolicyEvaluation",
+    "load_policy_bundle",
 ]
 __version__ = "1.0.0"

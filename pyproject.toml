@@ -25,6 +25,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 probes = ["requests>=2.31", "python-dotenv>=1.0"]
+policy = ["PyYAML>=6.0"]
 
 [project.scripts]
 sqube-agent-guard = "sqube_agent_guard.cli:main"

@@ -11,6 +11,7 @@ from sqube_agent_guard.execution.engine import ExecutionEngine, _new_execution_i
 from sqube_agent_guard.guard import ExecutionGuard, _as_policy
 from sqube_agent_guard.identity.models import AgentIdentity
 from sqube_agent_guard.ledger.store import SQLiteExecutionStore
+from sqube_agent_guard.policy.bundle import load_policy_bundle, validate_policy_bundle
 
 
 def main() -> None:
@@ -43,6 +44,17 @@ def main() -> None:
     expl.add_argument("--action", required=True)
     expl.add_argument("--resource", default=None)
     expl.add_argument("--environment", default=None)
+
+    pol = sub.add_parser("policy", help="Declarative policy bundles")
+    pol_sub = pol.add_subparsers(dest="policy_cmd")
+    pol_validate = pol_sub.add_parser("validate", help="Validate a JSON/YAML bundle")
+    pol_validate.add_argument("path")
+    pol_sim = pol_sub.add_parser("simulate", help="Evaluate a bundle against a context")
+    pol_sim.add_argument("path")
+    pol_sim.add_argument("--agent", default="default")
+    pol_sim.add_argument("--action", required=True)
+    pol_sim.add_argument("--resource", default=None)
+    pol_sim.add_argument("--environment", default=None)
 
     parser.add_argument("--last", type=int, default=10, help="Limit for default list view")
 
@@ -79,6 +91,31 @@ def main() -> None:
         ok = store.verify_chain()
         print("OK" if ok else "INTEGRITY_FAILURE")
         sys.exit(0 if ok else 2)
+
+    if args.command == "policy" and args.policy_cmd == "validate":
+        errors = validate_policy_bundle(args.path)
+        if errors:
+            for err in errors:
+                print(err, file=sys.stderr)
+            sys.exit(1)
+        print("OK")
+        return
+
+    if args.command == "policy" and args.policy_cmd == "simulate":
+        policy = load_policy_bundle(args.path)
+        ctx = context_from_wrap(
+            execution_id=_new_execution_id(),
+            agent_id=args.agent,
+            action=args.action,
+            resource=args.resource,
+            parameters={},
+            environment=args.environment,
+        )
+        result = policy.evaluate(ctx)
+        print(f"Decision: {result.decision.value}")
+        print(f"Policy: {result.policy_id} (v{result.policy_version})")
+        print(f"Reason: {result.reason}")
+        return
 
     if args.command in ("simulate", "explain"):
         guard = ExecutionGuard(ledger_path=args.ledger)
