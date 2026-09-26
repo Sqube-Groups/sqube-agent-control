@@ -244,7 +244,12 @@ class ExecutionEngine:
             raise SqubeDeniedError(ctx.execution_id, row["status"])
         if hash_payload(ctx.parameters) != row["parameters_hash"]:
             raise SqubeGuardError("parameters changed after authorization")
+        approval = self._store.get_approval(approval_id)
+        if not approval or approval.execution_id != ctx.execution_id:
+            raise SqubeGuardError(f"unknown approval {approval_id}")
         now = _utc_now_iso()
+        if approval.expires_at and approval.expires_at < now:
+            raise SqubeDeniedError(ctx.execution_id, "approval_expired")
         self._store.consume_approval_for_execution(
             approval_id, ctx.execution_id, now
         )

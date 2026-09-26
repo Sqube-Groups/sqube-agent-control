@@ -24,3 +24,23 @@ export class SqubeGuardError extends Error {
     this.name = "SqubeGuardError";
   }
 }
+
+export class SqubeApprovalPendingError extends SqubeGuardError {
+  constructor(
+    readonly executionId: string,
+    readonly approvalId: string
+  ) {
+    super(`Approval pending (approval_id=${approvalId}, execution_id=${executionId})`);
+    this.name = "SqubeApprovalPendingError";
+  }
+}
+
+export class SqubeApprovalError extends SqubeGuardError {
+  constructor(
+    readonly approvalId: string,
+    readonly reason: string
+  ) {
+    super(`Approval ${approvalId}: ${reason}`);
+    this.name = "SqubeApprovalError";
+  }
+}

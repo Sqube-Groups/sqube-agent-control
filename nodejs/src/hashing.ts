@@ -22,3 +22,7 @@ export function stableJsonDumps(value: unknown): string {
 export function sha256Hex(value: string): string {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
+
+export function hashPayload(value: unknown): string {
+  return sha256Hex(stableJsonDumps(value));
+}

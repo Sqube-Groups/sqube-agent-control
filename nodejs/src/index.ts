@@ -1,4 +1,6 @@
 export { ExecutionGuard } from "./guard.js";
+export { ExecutionEngine } from "./executionEngine.js";
+export type { ExecutionContext, ApprovalMode } from "./executionEngine.js";
 export { Ledger } from "./ledger.js";
 export { EventType } from "./events.js";
 export { Decision, ActionStatus } from "./types.js";
@@ -9,4 +11,7 @@ export {
   SqubeBlockedError,
   SqubeDeniedError,
   SqubeGuardError,
+  SqubeApprovalPendingError,
+  SqubeApprovalError,
 } from "./errors.js";
+export { assertTransition, SqubeInvalidStateTransitionError } from "./stateMachine.js";

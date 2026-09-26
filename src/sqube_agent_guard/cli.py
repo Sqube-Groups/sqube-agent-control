@@ -35,6 +35,10 @@ def main() -> None:
     show = sub.add_parser("execution", help="Show one execution")
     show.add_argument("execution_id")
 
+    cancel = sub.add_parser("cancel", help="Cancel a waiting or approved execution")
+    cancel.add_argument("execution_id")
+    cancel.add_argument("--reason", default="cancelled")
+
     verify = sub.add_parser("ledger", help="Ledger operations")
     verify_sub = verify.add_subparsers(dest="ledger_cmd")
     verify_sub.add_parser("verify", help="Verify event hash chains")
@@ -98,6 +102,15 @@ def main() -> None:
                 f"{row['created_at']}  {row['execution_id']}  {row['action']}  "
                 f"{row['decision']}  {row['status']}"
             )
+        return
+
+    if args.command == "cancel":
+        from sqube_agent_guard.execution.engine import ExecutionEngine
+
+        ExecutionEngine(store=store).cancel_execution(
+            args.execution_id, reason=args.reason
+        )
+        print("CANCELLED")
         return
 
     if args.command == "execution":

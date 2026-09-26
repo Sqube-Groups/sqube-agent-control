@@ -6,6 +6,7 @@ from sqube_agent_guard.exceptions import (
     SqubeApprovalError,
     SqubeApprovalPendingError,
     SqubeDeniedError,
+    SqubeGuardError,
 )
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.engine import ExecutionEngine
@@ -64,6 +65,24 @@ def test_denied_cannot_resume(tmp_path) -> None:
     store = SQLiteExecutionStore(ledger)
     store.deny_approval(approval_id, "human", "no", "2026-01-02T00:00:00+00:00")
     with pytest.raises(SqubeDeniedError):
+        engine.resume_after_approval(ctx, lambda: 1, approval_id=approval_id)
+
+
+def test_resume_rejects_parameter_tamper(tmp_path) -> None:
+    ledger = str(tmp_path / "ledger.sqlite3")
+    engine = ExecutionEngine(
+        policy=CallablePolicy(_require_email),
+        ledger_path=ledger,
+        approval_mode="deferred",
+    )
+    ctx = _ctx("sq_exec_tamper")
+    with pytest.raises(SqubeApprovalPendingError) as pending:
+        engine.run_controlled(ctx, lambda: 1)
+    approval_id = pending.value.approval_id
+    store = SQLiteExecutionStore(ledger)
+    store.grant_approval(approval_id, "human", "2026-01-02T00:00:00+00:00")
+    ctx.parameters = {"to": "evil@example.com"}
+    with pytest.raises(SqubeGuardError, match="parameters changed"):
         engine.resume_after_approval(ctx, lambda: 1, approval_id=approval_id)
 
 

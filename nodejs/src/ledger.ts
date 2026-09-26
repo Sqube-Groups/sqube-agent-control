@@ -4,7 +4,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { EventType, type ExecutionEvent } from "./events.js";
 import { sha256Hex, stableJsonDumps } from "./hashing.js";
-import type { ActionRecord } from "./types.js";
+import { assertTransition } from "./stateMachine.js";
+import { SqubeApprovalError } from "./errors.js";
+import { ActionStatus, type ActionRecord } from "./types.js";
+
+export interface ApprovalRecord {
+  approval_id: string;
+  execution_id: string;
+  status: string;
+  parameters_hash: string;
+  requested_at: string;
+  expires_at: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  decision_reason: string | null;
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS execution_records (
@@ -36,6 +50,18 @@ CREATE TABLE IF NOT EXISTS execution_events (
   previous_event_hash TEXT,
   event_hash TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS approval_requests (
+  approval_id TEXT PRIMARY KEY,
+  execution_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  parameters_hash TEXT NOT NULL,
+  requested_at TEXT NOT NULL,
+  expires_at TEXT,
+  decided_at TEXT,
+  decided_by TEXT,
+  decision_reason TEXT
+);
 `;
 
 function newEventId(): string {
@@ -51,6 +77,52 @@ export class Ledger {
     this.db = new Database(ledgerPath);
     this.db.exec(SCHEMA);
     this.db.pragma("journal_mode = WAL");
+    this.migrate();
+  }
+
+  private migrate(): void {
+    const cols = this.db.prepare("PRAGMA table_info(execution_records)").all() as Array<{
+      name: string;
+    }>;
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has("correlation_id")) {
+      this.db.exec("ALTER TABLE execution_records ADD COLUMN correlation_id TEXT");
+    }
+    if (!names.has("root_execution_id")) {
+      this.db.exec("ALTER TABLE execution_records ADD COLUMN root_execution_id TEXT");
+    }
+  }
+
+  getExecution(executionId: string): ActionRecord | undefined {
+    return this.db
+      .prepare("SELECT * FROM execution_records WHERE execution_id = ?")
+      .get(executionId) as ActionRecord | undefined;
+  }
+
+  transitionExecution(
+    executionId: string,
+    fromStatus: string,
+    toStatus: string,
+    fields: Partial<ActionRecord> = {}
+  ): void {
+    assertTransition(fromStatus, toStatus, executionId);
+    const keys = Object.keys(fields);
+    const sets = ["status = @to_status", ...keys.map((k) => `${k} = @${k}`)];
+    const stmt = this.db.prepare(
+      `UPDATE execution_records SET ${sets.join(", ")} WHERE execution_id = @execution_id AND status = @from_status`
+    );
+    const result = stmt.run({
+      ...fields,
+      to_status: toStatus,
+      execution_id: executionId,
+      from_status: fromStatus,
+    });
+    if (result.changes !== 1) {
+      const row = this.getExecution(executionId);
+      throw new Error(
+        `Invalid execution transition ${row?.status ?? "MISSING"} -> ${toStatus}`
+      );
+    }
   }
 
   insert(record: ActionRecord): void {
@@ -211,6 +283,86 @@ export class Ledger {
       .prepare("SELECT * FROM execution_records ORDER BY created_at DESC LIMIT 1")
       .get() as ActionRecord | undefined;
     return row;
+  }
+
+  createApprovalRequest(
+    approvalId: string,
+    executionId: string,
+    parametersHash: string,
+    requestedAt: string,
+    expiresAt: string | null
+  ): void {
+    this.db
+      .prepare(
+        `INSERT INTO approval_requests (
+          approval_id, execution_id, status, parameters_hash, requested_at, expires_at
+        ) VALUES (?, ?, 'PENDING', ?, ?, ?)`
+      )
+      .run(approvalId, executionId, parametersHash, requestedAt, expiresAt);
+  }
+
+  getApproval(approvalId: string): ApprovalRecord | undefined {
+    return this.db
+      .prepare("SELECT * FROM approval_requests WHERE approval_id = ?")
+      .get(approvalId) as ApprovalRecord | undefined;
+  }
+
+  grantApproval(approvalId: string, decidedBy: string, nowIso: string): string {
+    const grant = this.db.transaction(() => {
+      const row = this.getApproval(approvalId);
+      if (!row) throw new SqubeApprovalError(approvalId, "not found");
+      if (row.status !== "PENDING") {
+        throw new SqubeApprovalError(approvalId, `status is ${row.status}`);
+      }
+      if (row.expires_at && row.expires_at < nowIso) {
+        throw new SqubeApprovalError(approvalId, "expired");
+      }
+      const cur = this.db
+        .prepare(
+          "UPDATE approval_requests SET status = 'GRANTED', decided_at = ?, decided_by = ? WHERE approval_id = ? AND status = 'PENDING'"
+        )
+        .run(nowIso, decidedBy, approvalId);
+      if (cur.changes !== 1) {
+        throw new SqubeApprovalError(approvalId, "concurrent decision lost race");
+      }
+      this.transitionExecution(
+        row.execution_id,
+        ActionStatus.WAITING_APPROVAL,
+        ActionStatus.APPROVED,
+        { approved_by: decidedBy }
+      );
+      return row.execution_id;
+    });
+    return grant();
+  }
+
+  consumeApproval(approvalId: string, executionId: string, nowIso: string): void {
+    const consume = this.db.transaction(() => {
+      const row = this.getApproval(approvalId);
+      if (!row || row.execution_id !== executionId) {
+        throw new SqubeApprovalError(approvalId, "not found for execution");
+      }
+      if (row.status === "CONSUMED") {
+        throw new SqubeApprovalError(approvalId, "already consumed");
+      }
+      if (row.status !== "GRANTED") {
+        throw new SqubeApprovalError(approvalId, `status is ${row.status}`);
+      }
+      const cur = this.db
+        .prepare(
+          "UPDATE approval_requests SET status = 'CONSUMED', decided_at = ? WHERE approval_id = ? AND status = 'GRANTED'"
+        )
+        .run(nowIso, approvalId);
+      if (cur.changes !== 1) {
+        throw new SqubeApprovalError(approvalId, "concurrent consume lost race");
+      }
+      this.transitionExecution(
+        executionId,
+        ActionStatus.APPROVED,
+        ActionStatus.EXECUTING
+      );
+    });
+    consume();
   }
 
   close(): void {
