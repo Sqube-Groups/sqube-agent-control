@@ -1,6 +1,6 @@
 [package]
 name = "sqube-agent-guard"
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 description = "Execution authorization for AI agents (v1 contract tests; guard aligns with v0.1 core)"
 license = "Apache-2.0"

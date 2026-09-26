@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- `nodejs/README.md`: example-driven npm docs (wrap, approval, deferred, simulate, policy bundle, OTel).
+
 ## 1.0.3
 
 - Refresh `nodejs/README.md` for npm (control plane note, related packages, doc links).

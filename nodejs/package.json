@@ -1,6 +1,6 @@
 {
   "name": "sqube-agent-guard",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "readme": "README.md",
   "description": "Sqube Agent Control (Node.js): deterministic ALLOW/BLOCK/REQUIRE_APPROVAL policy, approvals, and tamper-evident execution ledger for AI agents (v1).",
   "homepage": "https://sqube-groups.github.io/sqube-agent-control/docs/intro",
