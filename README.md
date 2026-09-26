@@ -8,14 +8,14 @@ SDK wrapping is bypassable if application code skips the guard. This is **not** 
 
 ## Status
 
-**v1.0.4** on [`main`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main) — Python is the reference SDK; Node and Rust implement the shared execution contract ([`tests/contract/`](tests/contract/)). See [CHANGELOG.md](CHANGELOG.md) and [V1_SYNC_SEMANTICS.md](tests/contract/V1_SYNC_SEMANTICS.md).
+**v1.0.5** on [`main`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main) — Python is the reference SDK; Node and Rust implement the shared execution contract ([`tests/contract/`](tests/contract/)). See [CHANGELOG.md](CHANGELOG.md) and [V1_SYNC_SEMANTICS.md](tests/contract/V1_SYNC_SEMANTICS.md).
 
 ## SDKs
 
 | Language | Package | Path |
 |----------|---------|------|
-| Python | [`sqube-agent-guard`](https://pypi.org/project/sqube-agent-guard/) **1.0.4** (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | [`sqube-agent-guard`](https://www.npmjs.com/package/sqube-agent-guard) **1.0.4** (npm) | [`nodejs/`](nodejs/) |
+| Python | [`sqube-agent-guard`](https://pypi.org/project/sqube-agent-guard/) **1.0.5** (PyPI) | `src/sqube_agent_guard/` |
+| Node.js | [`sqube-agent-guard`](https://www.npmjs.com/package/sqube-agent-guard) **1.0.5** (npm) | [`nodejs/`](nodejs/) |
 | Rust | build from repo (not on crates.io yet) | [`rust/`](rust/) |
 
 **Docs:** [sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- npm: shorter `description` and README lead (no duplicate title/table above the fold).
+
 ## 1.0.4
 
 - `nodejs/README.md`: example-driven npm docs (wrap, approval, deferred, simulate, policy bundle, OTel).

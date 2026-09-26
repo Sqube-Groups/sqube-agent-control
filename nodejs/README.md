@@ -1,27 +1,17 @@
-# sqube-agent-guard
+Policy and audit layer for **AI agent actions** in Node.js.
 
-**Sqube Agent Control (Node.js)** — wrap agent actions, run policy, optionally require human approval, and append hash-chained events to a SQLite ledger.
-
-| Decision | What happens |
-|----------|----------------|
-| `ALLOW` | Your function runs; success is recorded. |
-| `BLOCK` | Your function does **not** run (`SqubeBlockedError`). |
-| `REQUIRE_APPROVAL` | Waits for approval (inline callback or deferred grant in the ledger). |
-
-**Control plane** (dashboard, RBAC, remote ingest) is **Python only**: `pip install "sqube-agent-guard[control-plane]"`. This package is the Node **execution kernel**.
-
-Requires **Node.js 18+**.
+Intercept tool calls and side effects, decide **allow**, **block**, or **require approval**, then record a **tamper-evident** SQLite ledger. Part of [Sqube Agent Control](https://sqube-groups.github.io/sqube-agent-control/docs/intro) (Python SDK + optional control plane; this package is the Node runtime).
 
 ```bash
 npm install sqube-agent-guard
 ```
 
----
+**Node.js 18+** · [Documentation](https://sqube-groups.github.io/sqube-agent-control/docs/intro) · [Source](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/nodejs)
 
-## Example 1 — Wrap one action (allow vs block)
+## Quick start
 
 ```typescript
-import { Decision, ExecutionGuard, SqubeBlockedError } from "sqube-agent-guard";
+import { Decision, ExecutionGuard } from "sqube-agent-guard";
 
 const guard = new ExecutionGuard({
   ledgerPath: "./sqube_ledger.sqlite3",
@@ -30,32 +20,28 @@ const guard = new ExecutionGuard({
 });
 
 const deleteFile = guard.wrapAction(
-  {
-    action: "delete_file",
-    resource: (path: string) => `file:${path}`,
-    agentId: "my-agent",
-  },
+  { action: "delete_file", resource: (path: string) => `file:${path}` },
   async (path: string) => {
-    // your real delete logic
-    return { deleted: path };
+    /* your logic */
+    return { ok: true, path };
   }
 );
 
-// Allowed read-style actions would use Decision.ALLOW in policy.
-try {
-  await deleteFile("/tmp/report.pdf");
-} catch (err) {
-  if (err instanceof SqubeBlockedError) {
-    console.log("blocked by policy");
-  }
-}
+await deleteFile("/tmp/report.pdf");
 ```
 
----
+**Policy outcomes**
 
-## Example 2 — Inline approval (human-in-the-loop)
+- **ALLOW** — handler runs; outcome is logged.
+- **BLOCK** — handler does not run (`SqubeBlockedError`).
+- **REQUIRE_APPROVAL** — inline `approvalFn` or deferred grant + resume (see below).
 
-Use when something like `send_email` must be approved before the handler runs:
+> Dashboard, teams/RBAC, and remote event ingest: use Python  
+> `pip install "sqube-agent-guard[control-plane]"` — not included in this npm package.
+
+## Examples
+
+### Inline approval
 
 ```typescript
 import { Decision, ExecutionGuard } from "sqube-agent-guard";
@@ -65,7 +51,7 @@ const guard = new ExecutionGuard({
   policy: (action) =>
     action === "send_email" ? Decision.REQUIRE_APPROVAL : Decision.ALLOW,
   approvalFn: async () => ({
-    approved: true, // set false to deny
+    approved: true,
     approvedBy: "operator@example.com",
     reason: null,
   }),
@@ -76,14 +62,10 @@ const sendEmail = guard.wrapAction(
   async () => ({ sent: true })
 );
 
-await sendEmail(); // runs only after approvalFn returns approved: true
+await sendEmail();
 ```
 
----
-
-## Example 3 — Deferred approval (pause, grant, resume)
-
-Use `ExecutionEngine` with `approvalMode: "deferred"`. The run stops with `SqubeApprovalPendingError`; grant on the ledger, then `resumeAfterApproval` with the **same** `executionId`.
+### Deferred approval (pause → grant → resume)
 
 ```typescript
 import {
@@ -100,7 +82,7 @@ const engine = new ExecutionEngine({
 });
 
 const ctx = {
-  executionId: "sq_exec_my_run_001",
+  executionId: "sq_exec_001",
   agentId: "bot",
   action: "send_email",
   resource: "a@b.com",
@@ -111,60 +93,37 @@ let approvalId = "";
 try {
   await engine.runControlled(ctx, () => "sent");
 } catch (err) {
-  if (err instanceof SqubeApprovalPendingError) {
-    approvalId = err.approvalId;
-  }
+  if (err instanceof SqubeApprovalPendingError) approvalId = err.approvalId;
 }
 
 engine.ledger.grantApproval(approvalId, "human", new Date().toISOString());
-
 const result = await engine.resumeAfterApproval(ctx, () => "sent", approvalId);
-console.log(result); // "sent"
 ```
 
----
-
-## Example 4 — Simulate before you execute
-
-Dry-run policy without running the handler:
+### Simulate policy (no execution)
 
 ```typescript
-import { Decision, ExecutionGuard } from "sqube-agent-guard";
-
 const guard = new ExecutionGuard({
-  policy: (action) =>
-    action === "admin_delete" ? Decision.BLOCK : Decision.ALLOW,
+  policy: (action) => (action === "admin_delete" ? Decision.BLOCK : Decision.ALLOW),
 });
 
-console.log(guard.simulate("admin_delete", "users/1")); // Decision.BLOCK
-console.log(guard.explain("file.read", "file:/tmp/x"));
-// { decision: Decision.ALLOW, policyId: "..." }
+guard.simulate("admin_delete", "users/1"); // Decision.BLOCK
+guard.explain("file.read", "file:/tmp/x");
 ```
 
----
-
-## Example 5 — JSON policy bundle
-
-Load the same style of rules as Python (path to a bundle file in your app):
+### JSON policy bundle
 
 ```typescript
 import { ExecutionGuard, loadPolicyBundle } from "sqube-agent-guard";
 
 const policy = loadPolicyBundle("/path/to/org_default.json");
-
 const guard = new ExecutionGuard({
   ledgerPath: "./sqube_ledger.sqlite3",
   policy: (action, resource, agentId) => policy(action, resource, agentId),
 });
 ```
 
-Fixture used in tests: [`tests/fixtures/policies/org_default.json`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/tests/fixtures/policies/org_default.json).
-
----
-
-## Example 6 — OpenTelemetry (optional)
-
-Observability only; does not change allow/block decisions.
+### OpenTelemetry (optional)
 
 ```typescript
 import { Decision, ExecutionGuard, OtelEventSink } from "sqube-agent-guard";
@@ -176,23 +135,16 @@ const guard = new ExecutionGuard({
 });
 ```
 
-Install `@opentelemetry/api` in your application if you attach a real tracer.
+Install `@opentelemetry/api` in your app when wiring a real tracer. OTel does not change authorization decisions.
 
----
+## More in the repo
 
-## More examples in the repo
-
-| What | Where |
-|------|--------|
-| Guard allow / block / approval | [`nodejs/src/guard.test.ts`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/nodejs/src/guard.test.ts) |
-| Deferred approval contract | [`nodejs/src/deferredContract.test.ts`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/nodejs/src/deferredContract.test.ts) |
+| Topic | Link |
+|-------|------|
+| Guard tests (allow / block / approval) | [`guard.test.ts`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/nodejs/src/guard.test.ts) |
+| Deferred contract | [`deferredContract.test.ts`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/nodejs/src/deferredContract.test.ts) |
 | Cross-language semantics | [`tests/contract/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/tests/contract) |
-| Python agent + control plane E2E | [`examples/python/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/examples/python) |
-
-## Documentation
-
-- **Docs:** https://sqube-groups.github.io/sqube-agent-control/docs/intro  
-- **Source:** https://github.com/Sqube-Groups/sqube-agent-control/tree/main/nodejs  
+| Python control plane E2E | [`examples/python/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/examples/python) |
 
 ## License
 
