@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from sqube_agent_guard.control_plane.api import create_app
 from sqube_agent_guard.control_plane.store import ControlPlaneStore
+from tests.control_plane_helpers import setup_and_login
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.engine import ExecutionEngine
 from sqube_agent_guard.identity.models import AgentIdentity
@@ -32,9 +33,11 @@ def client(tmp_path: Path) -> TestClient:
 
 
 def test_register_agent_and_overview(client: TestClient) -> None:
+    csrf = setup_and_login(client)
     res = client.post(
         "/api/v1/agents",
         json={"agent_id": "bot-a", "name": "Agent A", "environment": "dev"},
+        headers={"X-Sqube-CSRF-Token": csrf},
     )
     assert res.status_code == 200
     agents = client.get("/api/v1/agents").json()
@@ -61,6 +64,7 @@ def test_execution_visible_via_control_plane(client: TestClient, tmp_path: Path)
     )
     engine.run_controlled(ctx, lambda: "ok")
     api = TestClient(create_app(store))
+    setup_and_login(api)
     rows = api.get("/api/v1/executions").json()
     assert any(r["execution_id"] == "sq_exec_cp" for r in rows)
     detail = api.get("/api/v1/executions/sq_exec_cp").json()

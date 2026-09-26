@@ -3,23 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
   <title>Sqube Control Plane</title>
   <link rel="stylesheet" href="/assets/styles.css" />
+  <script>
+    (function () {
+      var stored = localStorage.getItem("sqube_theme");
+      var theme = stored === "light" || stored === "dark" ? stored : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
 </head>
 <body>
-  <header>
-    <h1>Sqube Control Plane</h1>
-    <p class="tagline">AI proposes. Sqube decides. Sqube records what actually happened.</p>
-    <p id="live-status" class="live live-offline">Offline</p>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Sqube Control Plane</h1>
+      <p class="tagline">Fleet visibility · local ledger remains authoritative</p>
+    </div>
+    <div class="topbar-actions">
+      <span id="user-chip" class="user-chip"></span>
+      <span id="live-status" class="live-pill live-offline" aria-live="polite">Offline</span>
+      <button type="button" id="logout-btn" class="btn btn-sm">Sign out</button>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle color theme">
+        <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+        <span class="theme-icon theme-icon-moon" aria-hidden="true">☽</span>
+        <span class="theme-label">Theme</span>
+      </button>
+    </div>
   </header>
-  <nav>
-    <button data-view="overview" class="active">Overview</button>
-    <button data-view="agents">Agents</button>
-    <button data-view="executions">Executions</button>
-    <button data-view="approvals">Approvals</button>
-    <button data-view="policies">Policies</button>
+  <nav class="nav-tabs" aria-label="Main">
+    <button type="button" data-view="overview" class="active">Overview</button>
+    <button type="button" data-view="agents">Agents</button>
+    <button type="button" data-view="executions">Executions</button>
+    <button type="button" data-view="approvals">Approvals</button>
+    <button type="button" data-view="policies">Policies</button>
+    <button type="button" data-view="admin" class="hidden">Administration</button>
   </nav>
-  <main id="content"></main>
+  <main id="content" class="main-content"></main>
   <script src="/assets/app.js"></script>
 </body>
 </html>

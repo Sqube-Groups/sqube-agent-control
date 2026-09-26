@@ -14,6 +14,7 @@ class AgentRegistration:
     status: str = "active"
     capabilities: list[str] | None = None
     policy_id: str | None = None
+    policy_version: str | None = None
 
 
 @dataclass

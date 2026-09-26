@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from sqube_agent_guard.control_plane.api import create_app
 from sqube_agent_guard.control_plane.store import ControlPlaneStore
+from tests.control_plane_helpers import setup_and_login
 from sqube_agent_guard.control_plane.webhooks import sign_webhook_payload
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.engine import ExecutionEngine
@@ -60,12 +61,18 @@ def test_batch_ingest_and_duplicate(client: TestClient) -> None:
     assert first["accepted"] == ["evt-1", "evt-2"]
     second = client.post("/api/v1/events/batch", json=body).json()
     assert second["duplicates"] == ["evt-1", "evt-2"]
+    setup_and_login(client)
     rows = client.get("/api/v1/executions").json()
     assert any(r["execution_id"] == "sq_exec_1" for r in rows)
 
 
-def test_batch_auth_required(store: ControlPlaneStore, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_batch_auth_required(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SQUBE_API_KEY", "secret")
+    monkeypatch.setenv("SQUBE_ADMIN_PASSWORD", "admin-pass-1")
+    store = ControlPlaneStore(
+        plane_db_path=str(tmp_path / "plane.sqlite3"),
+        ledger_path=str(tmp_path / "ledger.sqlite3"),
+    )
     authed = TestClient(create_app(store))
     res = authed.post("/api/v1/events/batch", json={"events": [_event("evt-x")]})
     assert res.status_code == 401

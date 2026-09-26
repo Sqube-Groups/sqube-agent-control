@@ -7,6 +7,7 @@ const sidebars = {
     'architecture',
     'control-plane',
     'event-ingestion',
+    'control-plane-auth',
     'policies',
     'cli',
     'observability',

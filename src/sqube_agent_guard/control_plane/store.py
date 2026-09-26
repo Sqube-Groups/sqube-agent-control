@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from sqube_agent_guard.control_plane.event_bus import EventBus
+from sqube_agent_guard.control_plane.identity import IdentityStore
 from sqube_agent_guard.control_plane.models import AgentRegistration, PolicyRegistration
 from sqube_agent_guard.control_plane.webhooks import WebhookStore
 from sqube_agent_guard.ledger.store import SQLiteExecutionStore
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS agents (
   status TEXT NOT NULL,
   capabilities TEXT,
   policy_id TEXT,
+  policy_version TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -86,6 +88,8 @@ class ControlPlaneStore:
         self._ledger = SQLiteExecutionStore(ledger_path)
         self.bus = EventBus()
         self.webhooks = WebhookStore(self._conn)
+        self.identity = IdentityStore(self._conn)
+        self.identity.ensure_bootstrap()
 
     @property
     def ledger(self) -> SQLiteExecutionStore:
@@ -263,14 +267,19 @@ class ControlPlaneStore:
         merged.sort(key=lambda r: r.get("created_at") or "", reverse=True)
         return merged[:limit]
 
-    def register_agent(self, reg: AgentRegistration) -> dict[str, Any]:
+    def register_agent(
+        self, reg: AgentRegistration, *, actor_username: str | None = None
+    ) -> dict[str, Any]:
         now = _utc_now()
         caps = json.dumps(reg.capabilities or [])
+        policy_version = getattr(reg, "policy_version", None)
+        if reg.policy_id and not policy_version:
+            policy_version = self.identity.get_active_policy_version(reg.policy_id)
         existing = self.get_agent(reg.agent_id)
         if existing:
             self._conn.execute(
                 "UPDATE agents SET name=?, runtime=?, version=?, environment=?, status=?, "
-                "capabilities=?, policy_id=?, updated_at=? WHERE agent_id=?",
+                "capabilities=?, policy_id=?, policy_version=?, updated_at=? WHERE agent_id=?",
                 (
                     reg.name,
                     reg.runtime,
@@ -279,6 +288,7 @@ class ControlPlaneStore:
                     reg.status,
                     caps,
                     reg.policy_id,
+                    policy_version,
                     now,
                     reg.agent_id,
                 ),
@@ -286,7 +296,8 @@ class ControlPlaneStore:
         else:
             self._conn.execute(
                 "INSERT INTO agents (agent_id, name, runtime, version, environment, status, "
-                "capabilities, policy_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "capabilities, policy_id, policy_version, created_at, updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     reg.agent_id,
                     reg.name,
@@ -296,12 +307,22 @@ class ControlPlaneStore:
                     reg.status,
                     caps,
                     reg.policy_id,
+                    policy_version,
                     now,
                     now,
                 ),
             )
         self._conn.commit()
-        agent = self.get_agent(reg.agent_id) or {}
+        agent = self.enrich_agent(self.get_agent(reg.agent_id) or {})
+        self.identity.audit(
+            None,
+            None,
+            actor_username,
+            "agent.registered" if not existing else "agent.updated",
+            "agent",
+            reg.agent_id,
+            {"policy_id": reg.policy_id, "policy_version": policy_version},
+        )
         self.bus.publish_sync(
             "agent.registered",
             {"agent_id": reg.agent_id, "name": reg.name, "environment": reg.environment},
@@ -315,6 +336,18 @@ class ControlPlaneStore:
             pass
         return agent
 
+    def enrich_agent(self, data: dict[str, Any]) -> dict[str, Any]:
+        if not data:
+            return data
+        pid = data.get("policy_id")
+        pver = data.get("policy_version")
+        active = self.identity.get_active_policy_version(pid) if pid else None
+        data["policy_active_version"] = active
+        data["attached_policy"] = (
+            f"{pid}@{pver}" if pid and pver else (f"{pid}@{active}" if pid else None)
+        )
+        return data
+
     def get_agent(self, agent_id: str) -> dict[str, Any] | None:
         row = self._conn.execute(
             "SELECT * FROM agents WHERE agent_id = ?", (agent_id,)
@@ -323,7 +356,7 @@ class ControlPlaneStore:
             return None
         data = dict(row)
         data["capabilities"] = json.loads(data["capabilities"] or "[]")
-        return data
+        return self.enrich_agent(data)
 
     def list_agents(self, limit: int = 100) -> list[dict[str, Any]]:
         rows = self._conn.execute(
@@ -333,19 +366,68 @@ class ControlPlaneStore:
         for row in rows:
             data = dict(row)
             data["capabilities"] = json.loads(data["capabilities"] or "[]")
-            out.append(data)
+            out.append(self.enrich_agent(data))
         return out
 
-    def register_policy(self, reg: PolicyRegistration) -> dict[str, Any]:
+    def assign_agent_policy(
+        self, agent_id: str, policy_id: str, policy_version: str | None, actor_username: str | None
+    ) -> dict[str, Any]:
+        version = policy_version or self.identity.get_active_policy_version(policy_id)
+        if not version:
+            raise ValueError("policy version required")
+        if not self.get_policy(policy_id, version):
+            raise ValueError("policy version not found")
+        now = _utc_now()
+        self._conn.execute(
+            "UPDATE agents SET policy_id=?, policy_version=?, updated_at=? WHERE agent_id=?",
+            (policy_id, version, now, agent_id),
+        )
+        self._conn.commit()
+        self.identity.audit(
+            None,
+            None,
+            actor_username,
+            "agent.policy_assigned",
+            "agent",
+            agent_id,
+            {"policy_id": policy_id, "policy_version": version},
+        )
+        agent = self.get_agent(agent_id)
+        if not agent:
+            raise ValueError("agent not found")
+        return agent
+
+    def register_policy(
+        self, reg: PolicyRegistration, *, actor_username: str | None = None, set_active: bool = True
+    ) -> dict[str, Any]:
         now = _utc_now()
         bundle_json = json.dumps(reg.bundle, sort_keys=True)
+        bundle_hash = self.identity.policy_bundle_hash(reg.bundle)
         self._conn.execute(
             "INSERT OR REPLACE INTO policies (policy_id, version, name, bundle_json, created_at) "
             "VALUES (?, ?, ?, ?, ?)",
             (reg.policy_id, reg.version, reg.name, bundle_json, now),
         )
+        self.identity.record_policy_version(
+            reg.policy_id, reg.version, reg.name, bundle_hash, actor_username
+        )
+        if set_active:
+            self.identity.set_active_policy(reg.policy_id, reg.version, actor_username)
         self._conn.commit()
         policy = self.get_policy(reg.policy_id, reg.version) or {}
+        policy["bundle_hash"] = bundle_hash
+        policy["is_active"] = (
+            self.identity.get_active_policy_version(reg.policy_id) == reg.version
+        )
+        self.identity.audit(
+            None,
+            None,
+            actor_username,
+            "policy.registered",
+            "policy",
+            f"{reg.policy_id}@{reg.version}",
+            {"bundle_hash": bundle_hash, "set_active": set_active},
+        )
         self.bus.publish_sync(
             "policy.changed",
             {"policy_id": reg.policy_id, "version": reg.version, "name": reg.name},

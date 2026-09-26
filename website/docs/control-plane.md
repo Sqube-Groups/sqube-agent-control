@@ -23,7 +23,7 @@ export SQUBE_API_KEY="your-secret"
 # Clients send header: X-Sqube-Api-Key
 ```
 
-If `SQUBE_API_KEY` is unset, the API accepts local requests without a key (development only).
+When users exist (bootstrap admin or teams), the API requires a **browser session** or **ingest API key** (`SQUBE_API_KEY` for `POST /api/v1/events/batch` only). See [Control plane authentication](./control-plane-auth).
 
 ## API surface
 
