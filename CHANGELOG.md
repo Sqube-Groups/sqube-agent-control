@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+
+- Refresh `nodejs/README.md` for npm (control plane note, related packages, doc links).
+
 ## 1.0.2
 
 - npm README repository link points at `main`; align package version with `v1.0.2` tag (do not retag without bumping semver).

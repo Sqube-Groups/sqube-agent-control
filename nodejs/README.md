@@ -2,11 +2,11 @@
 
 **Sqube Agent Control (Node.js)** — v1 execution authorization for AI agents.
 
-Deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), deferred human approval, SQLite execution ledger with hash-chained events, and optional OpenTelemetry. Behavior aligns with the shared v1 contract in the [Sqube monorepo](https://github.com/Sqube-Groups/sqube-agent-control) (`tests/contract/`).
+Wrap consequential actions, evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional deferred human approval, and record tamper-evident execution events in a SQLite ledger (hash-chained). Optional OpenTelemetry hooks align with the shared v1 contract in [`tests/contract/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/tests/contract/).
 
-The control plane (dashboard, remote event ingest) is operated via the **Python** package today (`pip install "sqube-agent-guard[control-plane]"`). Node focuses on the runtime execution kernel.
+The **control plane** (dashboard, teams/RBAC, remote event ingest) ships with the **Python** package: `pip install "sqube-agent-guard[control-plane]"` then `sqube-agent-guard serve` (first run: `/setup`). This npm package is the **runtime execution kernel** for Node.
 
-SDK wrapping is bypassable; this is not IAM or a network security boundary.
+SDK wrapping is bypassable if application code skips the guard. This is **not** IAM, a network security boundary, or host-level enforcement.
 
 ## Install
 
@@ -14,7 +14,7 @@ SDK wrapping is bypassable; this is not IAM or a network security boundary.
 npm install sqube-agent-guard
 ```
 
-Requires Node.js 18+.
+Requires **Node.js 18+**.
 
 ## Quick start
 
@@ -40,10 +40,19 @@ await deleteFile("/tmp/example.txt");
 
 Install `@opentelemetry/api` in your app and use `OtelEventSink` (observability only; does not affect authorization).
 
+## Related packages
+
+| Runtime | Package |
+|--------|---------|
+| Node.js (this) | [npm `sqube-agent-guard`](https://www.npmjs.com/package/sqube-agent-guard) |
+| Python (reference SDK + control plane) | [PyPI `sqube-agent-guard`](https://pypi.org/project/sqube-agent-guard/) |
+| Rust | Build from [`rust/`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main/rust) (not on crates.io yet) |
+
 ## Documentation
 
 - **Docs:** https://sqube-groups.github.io/sqube-agent-control/docs/intro
-- **Repository:** https://github.com/Sqube-Groups/sqube-agent-control/tree/main/nodejs
+- **Source:** https://github.com/Sqube-Groups/sqube-agent-control/tree/main/nodejs
+- **Issues:** https://github.com/Sqube-Groups/sqube-agent-control/issues
 
 ## License
 
