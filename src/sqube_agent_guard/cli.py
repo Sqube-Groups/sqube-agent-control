@@ -61,6 +61,13 @@ def main() -> None:
     appr_pending = appr_sub.add_parser("pending", help="List executions waiting for approval")
     appr_pending.add_argument("--limit", type=int, default=20)
 
+    authz = sub.add_parser("authorize", help="Evaluate policy from JSON on stdin (no ledger)")
+    authz.add_argument(
+        "--policy-bundle",
+        default=None,
+        help="Optional policy bundle path (default callable policy)",
+    )
+
     parser.add_argument("--last", type=int, default=10, help="Limit for default list view")
 
     args = parser.parse_args()
@@ -134,6 +141,26 @@ def main() -> None:
         print(f"Decision: {result.decision.value}")
         print(f"Policy: {result.policy_id} (v{result.policy_version})")
         print(f"Reason: {result.reason}")
+        return
+
+    if args.command == "authorize":
+        raw = sys.stdin.read()
+        if not raw.strip():
+            print("Expected JSON on stdin.", file=sys.stderr)
+            sys.exit(1)
+        body = json.loads(raw)
+        if args.policy_bundle:
+            policy = load_policy_bundle(args.policy_bundle)
+        else:
+            policy = _as_policy(None)
+        from sqube_agent_guard.http.authorize import authorize_request
+
+        try:
+            out = authorize_request(policy, body)
+        except (ValueError, json.JSONDecodeError) as exc:
+            print(str(exc), file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(out, indent=2))
         return
 
     if args.command in ("simulate", "explain"):
