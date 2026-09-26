@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from typing import Any, Literal
 
@@ -11,6 +11,7 @@ from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.ledger import Ledger
 from sqube_agent_guard.models import Decision
 from sqube_agent_guard.policy.engine import CallablePolicy, Policy, PolicyEvaluation
+from sqube_agent_guard.telemetry.sink import EventSink
 
 OnErrorMode = Literal["fail_open", "fail_closed"]
 
@@ -51,6 +52,7 @@ class ExecutionGuard:
         approval_timeout_seconds: int = 300,
         on_error: OnErrorMode = "fail_closed",
         approval_fn: Callable[..., tuple[bool, str | None, str | None]] | None = None,
+        event_sinks: Sequence[EventSink] | None = None,
     ) -> None:
         policy_obj = _as_policy(policy)
         approval_provider = (
@@ -62,6 +64,7 @@ class ExecutionGuard:
             approval_provider=approval_provider,
             approval_timeout_seconds=approval_timeout_seconds,
             on_error=on_error,
+            event_sinks=event_sinks,
         )
         self._ledger = Ledger(ledger_path)
 
