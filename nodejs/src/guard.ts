@@ -68,6 +68,24 @@ export class ExecutionGuard {
     this.approvalFn = opts.approvalFn ?? promptCliApproval;
   }
 
+  /** Dry-run policy evaluation (v1 helper; no ledger write). */
+  simulate(
+    action: string,
+    resource: string | null = null,
+    agentId = "default"
+  ): Decision {
+    return this.policy(action, resource, agentId);
+  }
+
+  explain(
+    action: string,
+    resource: string | null = null,
+    agentId = "default"
+  ): { decision: Decision; policyId: string } {
+    const decision = this.simulate(action, resource, agentId);
+    return { decision, policyId: policyId(this.policy) };
+  }
+
   wrapAction<T extends (...fnArgs: unknown[]) => unknown>(
     opts: WrapActionOptions,
     fn: T

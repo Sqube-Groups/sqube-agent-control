@@ -94,6 +94,14 @@ test("fail_closed on policy error", async () => {
   await assert.rejects(() => run(), SqubeGuardError);
 });
 
+test("simulate and explain default policy", () => {
+  const guard = new ExecutionGuard({ ledgerPath: tmpLedger() });
+  assert.equal(guard.simulate("send_email"), Decision.REQUIRE_APPROVAL);
+  const explained = guard.explain("admin_delete");
+  assert.equal(explained.decision, Decision.BLOCK);
+  assert.equal(explained.policyId, "defaultPolicy");
+});
+
 test("fail_open on policy error", async () => {
   const badPolicy = () => {
     throw new Error("broken");

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from typing import Any, Literal
 
@@ -17,7 +17,8 @@ from sqube_agent_guard.exceptions import (
 )
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.identity.models import AgentIdentity
-from sqube_agent_guard.ledger.events import EventType
+from sqube_agent_guard.ledger.events import EventType, ExecutionEvent
+from sqube_agent_guard.telemetry.sink import EventSink
 from sqube_agent_guard.ledger.store import ExecutionStore, SQLiteExecutionStore
 from sqube_agent_guard.models import ActionRecord, ActionStatus, Decision
 from sqube_agent_guard.policy.engine import CallablePolicy, Policy, PolicyEvaluation
@@ -46,6 +47,7 @@ class ExecutionEngine:
         approval_provider: ApprovalProvider | None = None,
         approval_timeout_seconds: int = 300,
         on_error: OnErrorMode = "fail_closed",
+        event_sinks: Sequence[EventSink] | None = None,
     ) -> None:
         if policy is None:
             policy = CallablePolicy(default_policy)
@@ -54,10 +56,26 @@ class ExecutionEngine:
         self._approval = approval_provider or CliApprovalProvider()
         self._approval_timeout = approval_timeout_seconds
         self._on_error = on_error
+        self._event_sinks = tuple(event_sinks or ())
 
     @property
     def store(self) -> ExecutionStore:
         return self._store
+
+    def _record_event(
+        self,
+        execution_id: str,
+        event_type: EventType,
+        actor: str,
+        payload: dict[str, Any],
+        timestamp: str,
+    ) -> ExecutionEvent:
+        event = self._store.append_event(
+            execution_id, event_type, actor, payload, timestamp
+        )
+        for sink in self._event_sinks:
+            sink.emit(event)
+        return event
 
     def simulate(self, ctx: ExecutionContext) -> PolicyEvaluation:
         return self._policy.evaluate(ctx)
@@ -115,7 +133,7 @@ class ExecutionEngine:
             status=ActionStatus.REQUESTED.value,
         )
         self._store.upsert_execution_record(record)
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.ACTION_REQUESTED,
             ctx.agent.agent_id,
@@ -129,7 +147,7 @@ class ExecutionEngine:
             self._finalize_blocked(ctx, "delegation denied")
             raise
 
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.CONTEXT_RESOLVED,
             ctx.agent.agent_id,
@@ -151,7 +169,7 @@ class ExecutionEngine:
             policy_id=evaluation.policy_id,
             status=ActionStatus.EVALUATED.value,
         )
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.POLICY_EVALUATED,
             "policy",
@@ -186,7 +204,7 @@ class ExecutionEngine:
         self._store.update_execution_record(
             ctx.execution_id, status=ActionStatus.WAITING_APPROVAL.value
         )
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.APPROVAL_REQUESTED,
             ctx.agent.agent_id,
@@ -218,7 +236,7 @@ class ExecutionEngine:
                 approval_reason=reason,
                 completed_at=_utc_now_iso(),
             )
-            self._store.append_event(ctx.execution_id, event, "human", {"reason": reason}, _utc_now_iso())
+            self._record_event(ctx.execution_id, event, "human", {"reason": reason}, _utc_now_iso())
             raise SqubeDeniedError(ctx.execution_id, reason or "denied")
 
         self._store.update_execution_record(
@@ -226,7 +244,7 @@ class ExecutionEngine:
             status=ActionStatus.APPROVED.value,
             approved_by=approved_by,
         )
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.APPROVAL_GRANTED,
             approved_by or "cli_user",
@@ -241,7 +259,7 @@ class ExecutionEngine:
             status=ActionStatus.BLOCKED.value,
             completed_at=_utc_now_iso(),
         )
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.ACTION_BLOCKED,
             "policy",
@@ -266,7 +284,7 @@ class ExecutionEngine:
         self._store.update_execution_record(
             ctx.execution_id, status=ActionStatus.EXECUTING.value
         )
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.ACTION_STARTED,
             ctx.agent.agent_id,
@@ -286,7 +304,7 @@ class ExecutionEngine:
                 duration_ms=duration_ms,
                 completed_at=_utc_now_iso(),
             )
-            self._store.append_event(
+            self._record_event(
                 ctx.execution_id,
                 EventType.ACTION_FAILED,
                 ctx.agent.agent_id,
@@ -302,7 +320,7 @@ class ExecutionEngine:
             duration_ms=duration_ms,
             completed_at=_utc_now_iso(),
         )
-        self._store.append_event(
+        self._record_event(
             ctx.execution_id,
             EventType.ACTION_SUCCEEDED,
             ctx.agent.agent_id,
