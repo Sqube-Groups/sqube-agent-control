@@ -2,7 +2,11 @@
   "name": "sqube-agent-guard",
   "version": "1.0.0",
   "readme": "README.md",
-  "description": "Execution authorization for AI agents — v1 synchronous semantics and contract tests (see tests/contract/V1_SYNC_SEMANTICS.md)",
+  "description": "Sqube Agent Control (Node.js): deterministic ALLOW/BLOCK/REQUIRE_APPROVAL policy, approvals, and tamper-evident execution ledger for AI agents (v1).",
+  "homepage": "https://sqube-groups.github.io/sqube-agent-control/docs/intro",
+  "bugs": {
+    "url": "https://github.com/Sqube-Groups/sqube-agent-control/issues"
+  },
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -45,9 +49,18 @@
     "directory": "nodejs"
   },
   "keywords": [
+    "sqube",
     "ai",
+    "ai-agents",
     "agents",
+    "agent-security",
     "execution",
-    "guardrail"
+    "authorization",
+    "policy",
+    "guardrail",
+    "governance",
+    "approval",
+    "audit",
+    "ledger"
   ]
 }
