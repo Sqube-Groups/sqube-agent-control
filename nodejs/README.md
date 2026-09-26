@@ -43,7 +43,7 @@ Install `@opentelemetry/api` in your app and use `OtelEventSink` (observability 
 ## Documentation
 
 - **Docs:** https://sqube-groups.github.io/sqube-agent-control/docs/intro
-- **Repository:** https://github.com/Sqube-Groups/sqube-agent-control/tree/staging/nodejs
+- **Repository:** https://github.com/Sqube-Groups/sqube-agent-control/tree/main/nodejs
 
 ## License
 

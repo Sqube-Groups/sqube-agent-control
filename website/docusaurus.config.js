@@ -31,7 +31,7 @@ const config = {
         docs: {
           sidebarPath: './sidebars.js',
           editUrl:
-            'https://github.com/Sqube-Groups/sqube-agent-control/tree/staging/website/',
+            'https://github.com/Sqube-Groups/sqube-agent-control/tree/main/website/',
         },
         theme: {
           customCss: './src/css/custom.css',

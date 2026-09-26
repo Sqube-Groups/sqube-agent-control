@@ -15,10 +15,10 @@ https://sqube-groups.github.io/sqube-agent-control/docs/intro
 
 The workflow [Deploy docs to GitHub Pages](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/.github/workflows/docs.yml) runs on:
 
-- Pushes to **`main`** or **`staging`** that change `website/**` or the workflow file
-- Manual **workflow_dispatch** from the Actions tab
+- Pushes to **`main`** that change `website/**` or the workflow file
+- Manual **workflow_dispatch** from the Actions tab (on **`main`**)
 
-Merges that only touch application code under `src/` do **not** redeploy docs until `website/` changes land on `main` or `staging`.
+Merges that only touch application code under `src/` do **not** redeploy docs until `website/` changes land on **`main`**.
 
 ## Build locally
 
