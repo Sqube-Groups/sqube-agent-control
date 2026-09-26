@@ -1,0 +1,10 @@
+{
+  "name": "require_approval_email",
+  "policy": "default",
+  "context": {
+    "agent_id": "bot",
+    "action": "send_email",
+    "resource": "user@example.com"
+  },
+  "expected_decision": "REQUIRE_APPROVAL"
+}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>First-time setup — Sqube Control Plane</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <script>
+    (function () {
+      var stored = localStorage.getItem("sqube_theme");
+      var theme = stored === "light" || stored === "dark" ? stored : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <h1>Welcome to Sqube</h1>
+    <p class="tagline">Create the first administrator account. You choose the username — <strong>admin</strong> is suggested, not required.</p>
+    <form id="setup-form">
+      <label>Username <input name="username" value="admin" autocomplete="username" required /></label>
+      <label>Email (optional) <input name="email" type="email" autocomplete="email" /></label>
+      <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
+      <label>Confirm password <input name="password2" type="password" autocomplete="new-password" required minlength="8" /></label>
+      <label>Team name <input name="team_name" value="Default team" /></label>
+      <button type="submit" class="btn btn-primary btn-block">Create administrator &amp; open dashboard</button>
+    </form>
+    <p id="setup-error" class="error hidden"></p>
+    <p class="detail-meta" style="margin-top:1rem">Optional: set <code>SQUBE_ADMIN_PASSWORD</code> before first start to auto-create user <code>admin</code> (for automation). Otherwise use this screen.</p>
+  </div>
+  <script src="/assets/setup.js"></script>
+</body>
+</html>

@@ -6,42 +6,45 @@ title: Introduction
 
 # Sqube Agent Control
 
-**Sqube Execution Guard (v0.1)** wraps consequential actions, deterministically decides `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`, optionally pauses for a human (CLI in Python v0.1), and writes an append-only SQLite execution record.
+**Open-source execution authorization infrastructure for AI agents.**
+
+> AI proposes. Sqube decides. Sqube records what actually happened.
+
+v1.0 establishes agent identity, composable deterministic policies, approvals, tamper-evident execution events, simulation/explain APIs, and an MCP adapter surface (Python). Simple v0.1-style `ExecutionGuard` wrapping remains supported.
 
 ## Status
 
-**Experimental — API may change.** SDK wrapping is bypassable. This is not a replacement for IAM, gateways, or production security controls.
+**v1.0.0** — Shared synchronous execution contract across Python, Node, and Rust; Python is the full reference SDK. Node uses Promises for I/O but not a separate async execution model. SDK-level control is bypassable if application code skips the guard.
 
-## SDKs
-
-| Language | Package | Source |
-|----------|---------|--------|
-| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
-| Rust | `sqube-agent-guard` (build from repo) | `rust/` |
-
-All three implement the same v0.1 contract documented in the [v0.1 specification](./v0.1-spec).
-
-## Installation
+## Install
 
 ```bash
 pip install sqube-agent-guard
 npm install sqube-agent-guard
 ```
 
-Rust is **not on crates.io yet**. Clone the repository and build from `rust/`:
+Rust: clone the repository and build from `rust/` (crates.io publish pending).
 
-```bash
-git clone https://github.com/Sqube-Groups/sqube-agent-control.git
-cd sqube-agent-control/rust
-cargo build
-cargo test
+## Quick start (Python)
+
+```python
+from sqube_agent_guard import Decision, ExecutionGuard
+
+def policy(action, resource, agent_id, **ctx):
+    if action == "email.send":
+        return Decision.REQUIRE_APPROVAL
+    return Decision.ALLOW
+
+guard = ExecutionGuard(policy=policy)
+
+@guard.wrap_action(action="email.send", resource="customer@example.com")
+def send_email():
+    ...
+
+send_email()
 ```
 
-After a future crates.io publish, `cargo add sqube-agent-guard` will apply; until then use a path or git dependency (see [`rust/README.md`](https://github.com/Sqube-Groups/sqube-agent-control/blob/main/rust/README.md) in the repo).
+## Documentation
 
-## Where to go next
-
-- Read the full **[v0.1 spec](./v0.1-spec)** — product promise, non-goals, ledger schema, tests required, and validation metrics.
-- **[Optional LLM probes](./optional-llm-probes)** — external API test scripts only; not used for guard decisions.
-- Clone the [GitHub repository](https://github.com/Sqube-Groups/sqube-agent-control) for SDK source and examples.
+- [Concepts](./concepts) — domain model and security boundaries
+- [GitHub README](https://github.com/Sqube-Groups/sqube-agent-control) — development and contributing

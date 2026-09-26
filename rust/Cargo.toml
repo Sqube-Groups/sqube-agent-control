@@ -1,8 +1,8 @@
 [package]
 name = "sqube-agent-guard"
-version = "0.1.1"
+version = "1.0.0"
 edition = "2021"
-description = "Developer-side execution guardrail (v0.1 experiment)"
+description = "Execution authorization for AI agents (v1 contract tests; guard aligns with v0.1 core)"
 license = "Apache-2.0"
 repository = "https://github.com/Sqube-Groups/sqube-agent-control"
 readme = "README.md"

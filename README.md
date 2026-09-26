@@ -1,26 +1,26 @@
 # Sqube Agent Control
 
-> Open-source infrastructure for controlling AI agent actions.
+> **Open-source execution authorization infrastructure for AI agents.**
 
-**v0.1 is an experiment.** SDK wrapping is bypassable. This is **not** a replacement for IAM, gateways, or security controls. It exists to learn whether execution-decision tooling has pull in real teams.
+Wrap consequential actions, evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and record tamper-evident execution events. **v1.0** adds composable policies, simulation/explain, declarative policy bundles, hash-chained events (Python + Node), optional OpenTelemetry (`pip install sqube-agent-guard[otel]`), and operator CLI commands.
 
-Sqube Execution Guard (v0.1) wraps a consequential action, deterministically decides `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`, optionally pauses for a human via CLI, and writes an append-only SQLite execution record.
-
-Do not use messaging like “secure your agents,” “enterprise control plane,” or “prevent all unauthorized actions.”
+SDK wrapping is bypassable if application code skips the guard. This is **not** a replacement for IAM, gateways, or production security controls.
 
 ## Status
 
-**Experimental — API may change.**
+**v1.0.0 (release candidate on `feat/v1.0-core`)** — synchronous execution semantics and shared contract tests across Python, Node, and Rust. **Python** is the reference implementation (full operator surface). **Node** and **Rust** implement `ExecutionEngine` + deferred approval + contract tests; they do **not** ship every Python-only capability. See [tests/contract/V1_SYNC_SEMANTICS.md](tests/contract/V1_SYNC_SEMANTICS.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## SDKs
 
-| Language | Package | Path |
-|----------|---------|------|
-| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
-| Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` |
+| Language | Package | Path | v1.0 role |
+|----------|---------|------|-----------|
+| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` | Reference: engine, CLI, idempotency, delegation, MCP adapter, hash-chained events |
+| Node.js | `sqube-agent-guard` (npm) | `nodejs/` | Contract + engine/guard; hash-chained events; Promises for I/O only |
+| Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` | Contract + engine/guard; `wrap_action` uses the same engine path |
 
-All three implement the same v0.1 contract documented on **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/v0.1-spec)** (source: [`website/docs/v0.1-spec.md`](website/docs/v0.1-spec.md)).
+Shared policy and state-machine contract tests: `tests/contract/`. Public docs: **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
+
+**Control plane (v1.0):** local API + dashboard — `pip install "sqube-agent-guard[control-plane]"` then `sqube-agent-guard serve`. See [control plane docs](website/docs/control-plane.md).
 
 ## Quick start (Python)
 
@@ -101,28 +101,16 @@ pip install sqube-agent-guard
 npm install sqube-agent-guard
 ```
 
-**Rust** — crates.io is not published yet. Clone this repository and build from `rust/`:
-
-```bash
-git clone https://github.com/Sqube-Groups/sqube-agent-control.git
-cd sqube-agent-control/rust
-cargo build
-cargo test
-```
-
-To depend on the crate from another Rust project before crates.io publish, use a path or git dependency in `Cargo.toml` (see [`rust/README.md`](rust/README.md)).
-
-Packaging and releases for Python and Node.js are wired via GitHub Actions on version tags (`v*.*.*`). Configure repository secrets: `PYPI_API_TOKEN`, `NPM_TOKEN`.
+**Rust** — crates.io is not published yet. Clone this repository and build from `rust/` (see [`rust/README.md`](rust/README.md)).
 
 ## Optional LLM probes
 
-v0.1 guard decisions are **deterministic** — no LLM in the policy path. For manual experiments only (not CI, not `ExecutionGuard`), see [`examples/nvidia_kimi_vision_probe.py`](examples/nvidia_kimi_vision_probe.py) and [Optional LLM probes](https://sqube-groups.github.io/sqube-agent-control/docs/optional-llm-probes) on the docs site.
+v0.1 guard decisions are **deterministic** — no LLM in the policy path. For manual experiments only (not CI, not `ExecutionGuard`), see [`examples/nvidia_kimi_vision_probe.py`](examples/nvidia_kimi_vision_probe.py).
 
 ```bash
 pip install requests   # or: pip install -e ".[probes]"
 export NVIDIA_API_KEY="your-key"
 python examples/nvidia_kimi_vision_probe.py
-python examples/nvidia_kimi_vision_probe.py --no-stream
 ```
 
 ## Development
@@ -141,26 +129,12 @@ cd rust && cargo test
 
 ## Documentation
 
-**CI** runs on pull requests and pushes targeting `main`; **GitHub Pages** deploys only on pushes to `main`; **PyPI/npm releases** run only for `v*.*.*` tags whose commit is on `main`.
-
-Published docs (Docusaurus) deploy to GitHub Pages on pushes to `main` (project site — path includes the repo name):
-
 | Use | URL |
 |-----|-----|
-| **Repo About / Website field** | `https://sqube-groups.github.io/sqube-agent-control/` |
-| **Docs home (intro)** | `https://sqube-groups.github.io/sqube-agent-control/docs/intro` |
+| **Docs home (intro)** | [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro) |
+| **Repo About / Website field** | [https://sqube-groups.github.io/sqube-agent-control/](https://sqube-groups.github.io/sqube-agent-control/) |
 
-Do **not** link `https://sqube-groups.github.io/docs/...` — that is the org/user site root without the `/sqube-agent-control/` prefix. Unless you configure a custom domain at the org root, docs live only under `/sqube-agent-control/`.
-
-**Maintainers:** [Enable GitHub Pages (GitHub Actions source)](website/docs/deploy-pages.md), docs deploy behavior, and [release tag commands](website/docs/deploy-pages.md#release-tags-pypi--npm) — see [`website/docs/deploy-pages.md`](website/docs/deploy-pages.md).
-
-Run locally:
-
-```bash
-cd website && npm ci && npm start
-```
-
-Keep private notes outside the repo under `docs_internal_never_commit/` (gitignored). Other common local-only folder names (`docs-never-commit/`, `.local-docs/`, `**/never-commit/`) are ignored as well.
+Local docs preview: `cd website && npm ci && npm start`
 
 ## Project structure
 

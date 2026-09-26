@@ -1,3 +1,31 @@
+# Maintainer notes (local only)
+
+Copy this file to `MAINTAINER.md` in this directory (gitignored). Do not commit secrets or tokens.
+
+## Internal v0.1 specification
+
+The full v0.1 implementation contract is **not** published on GitHub Pages. Maintainers keep a local copy only:
+
+```bash
+cp docs_internal_never_commit/v0.1-spec.md.template docs_internal_never_commit/v0.1-spec.md
+```
+
+Never add `v0.1-spec.md` under `website/docs/`.
+
+## Registry README policy
+
+Public package readmes must **not** use the repository root `README.md`:
+
+| Surface | Readme file |
+|---------|-------------|
+| PyPI | `README.pypi.md` (`pyproject.toml` → `readme`) |
+| npm | `nodejs/README.md` (`package.json` → `readme`) |
+| crates.io (future) | `rust/README.md` (`Cargo.toml` → `readme`) |
+
+The GitHub repo README is for contributors and clone UX only.
+
+---
+
 # GitHub Pages & releases
 
 Maintainer guide for publishing docs and SDK releases for this repository.
@@ -60,7 +88,7 @@ The Node package is published as the **unscoped** name `sqube-agent-guard` (same
 
 ### Release checklist (new version)
 
-The **Release** workflow publishes whatever versions are in the **tagged commit**—not the tag name alone. If you push `v0.1.1` but `package.json` / `pyproject.toml` still say `0.1.0`, registries get `0.1.0` again (or the job fails as a duplicate). Re-running an old **Release** run for `v0.1.0` does **not** publish a newer build; you need a **new** tag on a commit that already contains the bumps.
+The **Release** workflow publishes whatever versions are in the **tagged commit**—not the tag name alone. If you push `v0.1.2` but `package.json` / `pyproject.toml` still say `0.1.1`, registries get the wrong version (or the job fails as a duplicate). Re-running an old **Release** run does **not** publish a newer build; you need a **new** tag on a commit that already contains the bumps.
 
 1. **Bump every package version** (keep them aligned), then commit:
    - `pyproject.toml` → `version`
@@ -77,22 +105,16 @@ The **Release** workflow publishes whatever versions are in the **tagged commit*
 3. **Create a new semver tag** on that `main` commit—never reuse a tag that already triggered a release:
 
    ```bash
-   git tag -a v0.1.1 -m "Release v0.1.1"
+   git tag -a v0.1.2 -m "Release v0.1.2"
    ```
-
-   Use the next unused version (`v0.1.2`, …) if `v0.1.1` was already pushed.
 
 4. **Push only the new tag** (this starts **Release** once per push):
 
    ```bash
-   git push origin v0.1.1
+   git push origin v0.1.2
    ```
 
-   Do **not** rely on “Re-run all jobs” on an old `v0.1.0` workflow to ship fixes or a new npm/PyPI version.
-
 The workflow runs only for tags matching `v*.*.*`. The tagged commit must be on `main`; tags on other branches are rejected.
-
-To remove a mistaken **local** tag before pushing: `git tag -d v0.1.1`. To delete a **remote** tag (use carefully): `git push origin --delete v0.1.1`.
 
 ### PyPI setup and troubleshooting
 
@@ -102,23 +124,15 @@ The Release workflow builds from the repo root (`python -m build` → `dist/`) a
 
 1. Sign in at [pypi.org](https://pypi.org/) (create an account if needed).
 2. **Account settings** → **API tokens** → **Add API token**.
-   - **Scope:** *Entire account* (simplest), or *Project* scoped to `sqube-agent-guard` after the project exists.
-   - Copy the token (starts with `pypi-`); PyPI shows it only once.
-3. In GitHub: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-   - Name: **`PYPI_API_TOKEN`** (exact spelling)
-   - Value: the `pypi-…` token
-4. First successful upload creates the **`sqube-agent-guard`** project on PyPI; you do not need to register the name manually beforehand.
-
-The workflow passes the secret to `pypa/gh-action-pypi-publish` as the **`password`** input (username defaults to `__token__`, which PyPI requires for API tokens).
+3. In GitHub: secret name **`PYPI_API_TOKEN`** (exact spelling), value `pypi-…` token.
+4. First successful upload creates the **`sqube-agent-guard`** project on PyPI.
 
 #### Common Release workflow failures (Python job)
 
 | Symptom / log hint | Likely cause | What to do |
 |--------------------|--------------|------------|
-| `403 Forbidden` / invalid or missing credentials | Secret missing, wrong name, revoked token, or project-scoped token for a project that does not exist yet | Add or recreate **`PYPI_API_TOKEN`**; use entire-account scope for the first upload |
-| `400 … file already exists` / `duplicate` | **`version` in `pyproject.toml`** already on PyPI (common when re-running the same tag or workflow) | Bump `version` in `pyproject.toml`, merge to `main`, tag again—or rely on **`skip-existing: true`** in the workflow to no-op duplicate files on re-runs (does not replace a bad upload) |
-| Publish step fails immediately after pulling the Docker image | Often the upload error is in the next log lines; expand the **Publish to PyPI** step | Read the full step output for HTTP status and message |
-| Build step fails | Missing `src/` layout, invalid `pyproject.toml`, or `pip install build` / network issues | Run locally: `pip install build && python -m build` and fix reported errors |
-| Job never runs | Tag not on `main`, or tag pattern not `v*.*.*` | Tag a commit that is on `main`; use e.g. `v0.1.1` |
+| `403 Forbidden` | Bad/missing **`PYPI_API_TOKEN`** | Recreate token and secret |
+| `400 … file already exists` | Version already on PyPI | Bump `pyproject.toml` and tag again |
+| Build step fails | Invalid `pyproject.toml` | `pip install build && python -m build` locally |
 
-Re-running **Release** for the same version without bumping `pyproject.toml` used to fail on PyPI; the workflow sets **`skip-existing: true`** so idempotent re-runs skip wheels/sdists that are already published. npm does not have the same skip behavior—duplicate **`nodejs/package.json`** versions still fail until the version is bumped.
+Re-running **Release** for the same version: workflow uses **`skip-existing: true`** for PyPI. npm duplicate versions still fail until bumped.

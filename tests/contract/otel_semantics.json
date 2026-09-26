@@ -1,0 +1,52 @@
+{
+  "version": "1",
+  "description": "Cross-SDK OpenTelemetry semantics (optional dependency). Telemetry observes ledger events only.",
+  "root_span_name": "sqube.execution",
+  "span_events": {
+    "ACTION_REQUESTED": "execution requested",
+    "CONTEXT_RESOLVED": "context resolved",
+    "POLICY_EVALUATED": "policy evaluation",
+    "ACTION_BLOCKED": "execution blocked",
+    "APPROVAL_REQUESTED": "approval waiting",
+    "APPROVAL_GRANTED": "approval granted",
+    "APPROVAL_DENIED": "approval denied",
+    "APPROVAL_EXPIRED": "approval expired",
+    "ACTION_STARTED": "execution started",
+    "ACTION_SUCCEEDED": "execution completed",
+    "ACTION_FAILED": "execution failed",
+    "ACTION_CANCELLED": "execution cancelled"
+  },
+  "attribute_keys": [
+    "sqube.execution_id",
+    "sqube.agent_id",
+    "sqube.action",
+    "sqube.resource",
+    "sqube.decision",
+    "sqube.status",
+    "sqube.policy_id",
+    "sqube.approval_id",
+    "sqube.correlation_id",
+    "sqube.root_execution_id"
+  ],
+  "forbidden_in_attributes": [
+    "parameters",
+    "parameters_payload",
+    "token",
+    "secret",
+    "password",
+    "authorization"
+  ],
+  "metrics": [
+    "sqube.executions.total",
+    "sqube.executions.allowed",
+    "sqube.executions.blocked",
+    "sqube.executions.approval_required",
+    "sqube.executions.succeeded",
+    "sqube.executions.failed",
+    "sqube.executions.cancelled",
+    "sqube.approvals.granted",
+    "sqube.approvals.denied",
+    "sqube.approvals.expired",
+    "sqube.execution.duration"
+  ]
+}

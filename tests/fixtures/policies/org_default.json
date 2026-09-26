@@ -1,0 +1,23 @@
+{
+  "policy_id": "org-default",
+  "name": "Organization default",
+  "version": "1",
+  "description": "Contract-style default rules",
+  "rules": [
+    {
+      "name": "block admin prefix",
+      "when": { "action_prefix": "admin_" },
+      "decision": "BLOCK"
+    },
+    {
+      "name": "high risk actions",
+      "when": { "action_in": ["db_mutation", "send_email", "file_delete"] },
+      "decision": "REQUIRE_APPROVAL"
+    },
+    {
+      "name": "allow low risk reads",
+      "when": { "action_prefix": "file." },
+      "decision": "ALLOW"
+    }
+  ]
+}
