@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from sqube_agent_guard.approval.provider import CliApprovalProvider
-from sqube_agent_guard.execution.engine import ExecutionEngine, context_from_wrap, _new_execution_id
+from sqube_agent_guard.execution.engine import (
+    ApprovalMode,
+    ExecutionEngine,
+    context_from_wrap,
+    _new_execution_id,
+)
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.ledger import Ledger
 from sqube_agent_guard.models import Decision
@@ -54,6 +59,7 @@ class ExecutionGuard:
         on_error: OnErrorMode = "fail_closed",
         approval_fn: Callable[..., tuple[bool, str | None, str | None]] | None = None,
         event_sinks: Sequence[EventSink] | None = None,
+        approval_mode: ApprovalMode = "sync",
     ) -> None:
         policy_obj = _as_policy(policy)
         resolved_ledger = ledger_path or ledger_path_from_env()
@@ -67,6 +73,7 @@ class ExecutionGuard:
             approval_timeout_seconds=approval_timeout_seconds,
             on_error=on_error,
             event_sinks=event_sinks,
+            approval_mode=approval_mode,
         )
         self._ledger = Ledger(resolved_ledger)
 
@@ -75,6 +82,18 @@ class ExecutionGuard:
 
     def explain(self, ctx: ExecutionContext) -> PolicyEvaluation:
         return self._engine.explain(ctx)
+
+    def resume_after_approval(
+        self,
+        ctx: ExecutionContext,
+        fn: Callable[[], Any],
+        *,
+        approval_id: str,
+    ) -> Any:
+        return self._engine.resume_after_approval(ctx, fn, approval_id=approval_id)
+
+    def cancel_execution(self, execution_id: str, *, reason: str = "cancelled") -> None:
+        self._engine.cancel_execution(execution_id, reason=reason)
 
     def wrap_action(
         self,

@@ -19,7 +19,15 @@ sqube-agent-guard --ledger ./sqube_ledger.sqlite3 <command>
 
 ## Approvals
 
-- `approvals pending` — executions in `WAITING_APPROVAL` (inspect only; interactive approval still happens in-process via the CLI provider)
+Deferred mode (`ExecutionGuard(approval_mode="deferred")`):
+
+- `approvals pending` — durable approval requests (`sq_apr_*`)
+- `approvals grant <approval_id> [--by name]`
+- `approvals deny <approval_id> [--reason text]`
+
+After grant, resume in Python via `guard.resume_after_approval(ctx, fn, approval_id=...)`.
+
+Sync mode (default) keeps the interactive CLI prompt inside the process.
 
 ## Authorize (stateless)
 

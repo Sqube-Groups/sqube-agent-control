@@ -44,6 +44,10 @@ class ActionRecord:
     error_message: str | None = None
     duration_ms: int | None = None
     completed_at: str | None = None
+    correlation_id: str | None = None
+    parent_execution_id: str | None = None
+    root_execution_id: str | None = None
+    session_id: str | None = None
 
     def to_row(self) -> dict[str, Any]:
         return asdict(self)

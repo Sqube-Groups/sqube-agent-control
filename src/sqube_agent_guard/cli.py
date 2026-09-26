@@ -5,10 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.engine import ExecutionEngine, _new_execution_id, context_from_wrap
 from sqube_agent_guard.guard import ExecutionGuard, _as_policy
+from sqube_agent_guard.approval.models import ApprovalRequestStatus
 from sqube_agent_guard.ledger.store import SQLiteExecutionStore
 from sqube_agent_guard.models import ActionStatus
 from sqube_agent_guard.policy.bundle import load_policy_bundle, validate_policy_bundle
@@ -58,8 +64,15 @@ def main() -> None:
 
     appr = sub.add_parser("approvals", help="Approval queue inspection")
     appr_sub = appr.add_subparsers(dest="approvals_cmd")
-    appr_pending = appr_sub.add_parser("pending", help="List executions waiting for approval")
+    appr_pending = appr_sub.add_parser("pending", help="List pending approval requests")
     appr_pending.add_argument("--limit", type=int, default=20)
+    appr_grant = appr_sub.add_parser("grant", help="Grant a deferred approval")
+    appr_grant.add_argument("approval_id")
+    appr_grant.add_argument("--by", default="cli_operator")
+    appr_deny = appr_sub.add_parser("deny", help="Deny a deferred approval")
+    appr_deny.add_argument("approval_id")
+    appr_deny.add_argument("--by", default="cli_operator")
+    appr_deny.add_argument("--reason", default="denied_by_operator")
 
     authz = sub.add_parser("authorize", help="Evaluate policy from JSON on stdin (no ledger)")
     authz.add_argument(
@@ -105,17 +118,31 @@ def main() -> None:
         sys.exit(0 if ok else 2)
 
     if args.command == "approvals" and args.approvals_cmd == "pending":
-        rows = store.list_executions(
-            args.limit, status=ActionStatus.WAITING_APPROVAL.value
+        pending = store.list_approval_requests(
+            status=ApprovalRequestStatus.PENDING.value, limit=args.limit
         )
-        if not rows:
+        if not pending:
             print("No pending approvals.")
             return
-        for row in rows:
+        for item in pending:
+            row = store.get_execution(item.execution_id) or {}
             print(
-                f"{row['created_at']}  {row['execution_id']}  {row['agent_id']}  "
-                f"{row['action']}  {row.get('resource') or '-'}"
+                f"{item.requested_at}  {item.approval_id}  {item.execution_id}  "
+                f"{row.get('agent_id', '-')}  {row.get('action', '-')}  "
+                f"expires={item.expires_at or '-'}"
             )
+        return
+
+    if args.command == "approvals" and args.approvals_cmd == "grant":
+        execution_id = store.grant_approval(args.approval_id, args.by, _utc_now_iso())
+        print(f"GRANTED  execution_id={execution_id}")
+        return
+
+    if args.command == "approvals" and args.approvals_cmd == "deny":
+        execution_id = store.deny_approval(
+            args.approval_id, args.by, args.reason, _utc_now_iso()
+        )
+        print(f"DENIED  execution_id={execution_id}")
         return
 
     if args.command == "policy" and args.policy_cmd == "validate":

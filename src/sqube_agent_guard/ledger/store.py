@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from sqube_agent_guard.core.hashing import sha256_hex, stable_json_dumps
+from sqube_agent_guard.approval.models import ApprovalRecord, ApprovalRequestStatus
+from sqube_agent_guard.execution.state_machine import assert_transition
+from sqube_agent_guard.exceptions import SqubeApprovalError, SqubeInvalidStateTransitionError
 from sqube_agent_guard.ledger.events import EventType, ExecutionEvent
 from sqube_agent_guard.models import ActionRecord, ActionStatus
 
@@ -43,6 +46,35 @@ class ExecutionStore(Protocol):
     ) -> bool: ...
 
     def get_execution_by_idempotency(self, idempotency_key: str) -> dict[str, Any] | None: ...
+
+    def transition_execution(
+        self, execution_id: str, from_status: str, to_status: str, **fields: Any
+    ) -> None: ...
+
+    def create_approval_request(
+        self,
+        approval_id: str,
+        execution_id: str,
+        parameters_hash: str,
+        requested_at: str,
+        expires_at: str | None,
+    ) -> None: ...
+
+    def get_approval(self, approval_id: str) -> ApprovalRecord | None: ...
+
+    def list_approval_requests(
+        self, *, status: str | None = None, limit: int = 50
+    ) -> list[ApprovalRecord]: ...
+
+    def grant_approval(self, approval_id: str, decided_by: str, now_iso: str) -> str: ...
+
+    def deny_approval(
+        self, approval_id: str, decided_by: str, reason: str, now_iso: str
+    ) -> str: ...
+
+    def consume_approval_for_execution(
+        self, approval_id: str, execution_id: str, now_iso: str
+    ) -> None: ...
 
 
 _SCHEMA = """
@@ -85,6 +117,21 @@ CREATE TABLE IF NOT EXISTS execution_events (
   previous_event_hash TEXT,
   event_hash TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS approval_requests (
+  approval_id TEXT PRIMARY KEY,
+  execution_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  parameters_hash TEXT NOT NULL,
+  requested_at TEXT NOT NULL,
+  expires_at TEXT,
+  decided_at TEXT,
+  decided_by TEXT,
+  decision_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_approval_execution ON approval_requests(execution_id);
+CREATE INDEX IF NOT EXISTS idx_approval_status ON approval_requests(status);
 """
 
 
@@ -111,6 +158,31 @@ class SQLiteExecutionStore:
             self._conn.execute("ALTER TABLE execution_records ADD COLUMN parent_execution_id TEXT")
         if "root_execution_id" not in cols:
             self._conn.execute("ALTER TABLE execution_records ADD COLUMN root_execution_id TEXT")
+        if "session_id" not in cols:
+            self._conn.execute("ALTER TABLE execution_records ADD COLUMN session_id TEXT")
+
+    def transition_execution(
+        self, execution_id: str, from_status: str, to_status: str, **fields: Any
+    ) -> None:
+        assert_transition(from_status, to_status, execution_id=execution_id)
+        assignments = ["status = ?"]
+        values: list[Any] = [to_status]
+        for key, value in fields.items():
+            assignments.append(f"{key} = ?")
+            values.append(value)
+        values.extend([execution_id, from_status])
+        sql = (
+            f"UPDATE execution_records SET {', '.join(assignments)} "
+            "WHERE execution_id = ? AND status = ?"
+        )
+        cursor = self._conn.execute(sql, values)
+        if cursor.rowcount != 1:
+            row = self.get_execution(execution_id)
+            current = row["status"] if row else "MISSING"
+            raise SqubeInvalidStateTransitionError(
+                str(current), str(to_status), execution_id=execution_id
+            )
+        self._conn.commit()
 
     def append_event(
         self,
@@ -286,6 +358,222 @@ class SQLiteExecutionStore:
             (idempotency_key,),
         ).fetchone()
         return dict(row) if row else None
+
+    def _row_to_approval(self, row: sqlite3.Row) -> ApprovalRecord:
+        return ApprovalRecord(
+            approval_id=row["approval_id"],
+            execution_id=row["execution_id"],
+            status=ApprovalRequestStatus(row["status"]),
+            parameters_hash=row["parameters_hash"],
+            requested_at=row["requested_at"],
+            expires_at=row["expires_at"],
+            decided_at=row["decided_at"],
+            decided_by=row["decided_by"],
+            decision_reason=row["decision_reason"],
+        )
+
+    def create_approval_request(
+        self,
+        approval_id: str,
+        execution_id: str,
+        parameters_hash: str,
+        requested_at: str,
+        expires_at: str | None,
+    ) -> None:
+        self._conn.execute(
+            "INSERT INTO approval_requests "
+            "(approval_id, execution_id, status, parameters_hash, requested_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                approval_id,
+                execution_id,
+                ApprovalRequestStatus.PENDING.value,
+                parameters_hash,
+                requested_at,
+                expires_at,
+            ),
+        )
+        self._conn.commit()
+
+    def get_approval(self, approval_id: str) -> ApprovalRecord | None:
+        row = self._conn.execute(
+            "SELECT * FROM approval_requests WHERE approval_id = ?",
+            (approval_id,),
+        ).fetchone()
+        return self._row_to_approval(row) if row else None
+
+    def list_approval_requests(
+        self, *, status: str | None = None, limit: int = 50
+    ) -> list[ApprovalRecord]:
+        if status:
+            rows = self._conn.execute(
+                "SELECT * FROM approval_requests WHERE status = ? "
+                "ORDER BY requested_at DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM approval_requests ORDER BY requested_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [self._row_to_approval(r) for r in rows]
+
+    def grant_approval(self, approval_id: str, decided_by: str, now_iso: str) -> str:
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            row = self._conn.execute(
+                "SELECT * FROM approval_requests WHERE approval_id = ?",
+                (approval_id,),
+            ).fetchone()
+            if not row:
+                raise SqubeApprovalError(approval_id, "not found")
+            if row["status"] != ApprovalRequestStatus.PENDING.value:
+                raise SqubeApprovalError(approval_id, f"status is {row['status']}")
+            expires_at = row["expires_at"]
+            if expires_at and expires_at < now_iso:
+                self._conn.execute(
+                    "UPDATE approval_requests SET status = ?, decided_at = ?, "
+                    "decision_reason = ? WHERE approval_id = ?",
+                    (
+                        ApprovalRequestStatus.EXPIRED.value,
+                        now_iso,
+                        "expired",
+                        approval_id,
+                    ),
+                )
+                self._transition_execution_in_tx(
+                    row["execution_id"],
+                    ActionStatus.WAITING_APPROVAL.value,
+                    ActionStatus.EXPIRED.value,
+                    completed_at=now_iso,
+                    approval_reason="expired",
+                )
+                self._conn.commit()
+                raise SqubeApprovalError(approval_id, "expired")
+
+            cur = self._conn.execute(
+                "UPDATE approval_requests SET status = ?, decided_at = ?, decided_by = ? "
+                "WHERE approval_id = ? AND status = ?",
+                (
+                    ApprovalRequestStatus.GRANTED.value,
+                    now_iso,
+                    decided_by,
+                    approval_id,
+                    ApprovalRequestStatus.PENDING.value,
+                ),
+            )
+            if cur.rowcount != 1:
+                raise SqubeApprovalError(approval_id, "concurrent decision lost race")
+            self._transition_execution_in_tx(
+                row["execution_id"],
+                ActionStatus.WAITING_APPROVAL.value,
+                ActionStatus.APPROVED.value,
+                approved_by=decided_by,
+            )
+            self._conn.commit()
+            return row["execution_id"]
+        except Exception:
+            self._conn.execute("ROLLBACK")
+            raise
+
+    def deny_approval(
+        self, approval_id: str, decided_by: str, reason: str, now_iso: str
+    ) -> str:
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            row = self._conn.execute(
+                "SELECT * FROM approval_requests WHERE approval_id = ?",
+                (approval_id,),
+            ).fetchone()
+            if not row:
+                raise SqubeApprovalError(approval_id, "not found")
+            if row["status"] != ApprovalRequestStatus.PENDING.value:
+                raise SqubeApprovalError(approval_id, f"status is {row['status']}")
+            cur = self._conn.execute(
+                "UPDATE approval_requests SET status = ?, decided_at = ?, decided_by = ?, "
+                "decision_reason = ? WHERE approval_id = ? AND status = ?",
+                (
+                    ApprovalRequestStatus.DENIED.value,
+                    now_iso,
+                    decided_by,
+                    reason,
+                    approval_id,
+                    ApprovalRequestStatus.PENDING.value,
+                ),
+            )
+            if cur.rowcount != 1:
+                raise SqubeApprovalError(approval_id, "concurrent decision lost race")
+            self._transition_execution_in_tx(
+                row["execution_id"],
+                ActionStatus.WAITING_APPROVAL.value,
+                ActionStatus.DENIED.value,
+                completed_at=now_iso,
+                approval_reason=reason,
+            )
+            self._conn.commit()
+            return row["execution_id"]
+        except Exception:
+            self._conn.execute("ROLLBACK")
+            raise
+
+    def consume_approval_for_execution(
+        self, approval_id: str, execution_id: str, now_iso: str
+    ) -> None:
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            row = self._conn.execute(
+                "SELECT * FROM approval_requests WHERE approval_id = ? AND execution_id = ?",
+                (approval_id, execution_id),
+            ).fetchone()
+            if not row:
+                raise SqubeApprovalError(approval_id, "not found for execution")
+            if row["status"] == ApprovalRequestStatus.CONSUMED.value:
+                raise SqubeApprovalError(approval_id, "already consumed")
+            if row["status"] != ApprovalRequestStatus.GRANTED.value:
+                raise SqubeApprovalError(approval_id, f"status is {row['status']}")
+            cur = self._conn.execute(
+                "UPDATE approval_requests SET status = ?, decided_at = ? "
+                "WHERE approval_id = ? AND status = ?",
+                (
+                    ApprovalRequestStatus.CONSUMED.value,
+                    now_iso,
+                    approval_id,
+                    ApprovalRequestStatus.GRANTED.value,
+                ),
+            )
+            if cur.rowcount != 1:
+                raise SqubeApprovalError(approval_id, "concurrent consume lost race")
+            self._transition_execution_in_tx(
+                execution_id,
+                ActionStatus.APPROVED.value,
+                ActionStatus.EXECUTING.value,
+            )
+            self._conn.commit()
+        except Exception:
+            self._conn.execute("ROLLBACK")
+            raise
+
+    def _transition_execution_in_tx(
+        self, execution_id: str, from_status: str, to_status: str, **fields: Any
+    ) -> None:
+        assert_transition(from_status, to_status, execution_id=execution_id)
+        assignments = ["status = ?"]
+        values: list[Any] = [to_status]
+        for key, value in fields.items():
+            assignments.append(f"{key} = ?")
+            values.append(value)
+        values.extend([execution_id, from_status])
+        cursor = self._conn.execute(
+            f"UPDATE execution_records SET {', '.join(assignments)} "
+            "WHERE execution_id = ? AND status = ?",
+            values,
+        )
+        if cursor.rowcount != 1:
+            row = self.get_execution(execution_id)
+            current = row["status"] if row else "MISSING"
+            raise SqubeInvalidStateTransitionError(
+                str(current), str(to_status), execution_id=execution_id
+            )
 
     def close(self) -> None:
         self._conn.close()

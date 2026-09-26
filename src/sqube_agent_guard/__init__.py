@@ -2,8 +2,11 @@ from sqube_agent_guard.exceptions import (
     SqubeBlockedError,
     SqubeDeniedError,
     SqubeGuardError,
+    SqubeApprovalError,
+    SqubeApprovalPendingError,
     SqubeIdempotencyConflictError,
     SqubeIdempotencyReplayError,
+    SqubeInvalidStateTransitionError,
 )
 from sqube_agent_guard.guard import ExecutionGuard
 from sqube_agent_guard.models import ActionStatus, Decision
@@ -30,5 +33,8 @@ __all__ = [
     "SqubeGuardError",
     "SqubeIdempotencyConflictError",
     "SqubeIdempotencyReplayError",
+    "SqubeApprovalPendingError",
+    "SqubeApprovalError",
+    "SqubeInvalidStateTransitionError",
 ]
 __version__ = "1.0.0"

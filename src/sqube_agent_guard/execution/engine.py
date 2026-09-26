@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import uuid
 from collections.abc import Callable, Sequence
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 from sqube_agent_guard.approval.provider import ApprovalProvider, CliApprovalProvider
@@ -12,8 +12,10 @@ from sqube_agent_guard.exceptions import (
     SqubeBlockedError,
     SqubeDeniedError,
     SqubeGuardError,
+    SqubeApprovalPendingError,
     SqubeIdempotencyConflictError,
     SqubeIdempotencyReplayError,
+    SqubeInvalidStateTransitionError,
 )
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.interceptor import ExecutionInterceptor
@@ -28,6 +30,7 @@ from sqube_agent_guard.redaction import redact_value
 from sqube_agent_guard.core.hashing import hash_payload
 
 OnErrorMode = Literal["fail_open", "fail_closed"]
+ApprovalMode = Literal["sync", "deferred"]
 
 
 def _utc_now_iso() -> str:
@@ -50,6 +53,7 @@ class ExecutionEngine:
         on_error: OnErrorMode = "fail_closed",
         event_sinks: Sequence[EventSink] | None = None,
         interceptors: Sequence[ExecutionInterceptor] | None = None,
+        approval_mode: ApprovalMode = "sync",
     ) -> None:
         if policy is None:
             policy = CallablePolicy(default_policy)
@@ -60,10 +64,18 @@ class ExecutionEngine:
         self._on_error = on_error
         self._event_sinks = tuple(event_sinks or ())
         self._interceptors = tuple(interceptors or ())
+        self._approval_mode = approval_mode
 
     @property
     def store(self) -> ExecutionStore:
         return self._store
+
+    def _transition(
+        self, execution_id: str, from_status: str, to_status: str, **fields: Any
+    ) -> None:
+        self._store.transition_execution(
+            execution_id, from_status, to_status, **fields
+        )
 
     def _record_event(
         self,
@@ -102,6 +114,8 @@ class ExecutionEngine:
             ctx.timestamp = _utc_now_iso()
         if not ctx.root_execution_id:
             ctx.root_execution_id = ctx.execution_id
+        if not ctx.correlation_id:
+            ctx.correlation_id = ctx.root_execution_id
 
         if ctx.idempotency_key:
             if not self._store.register_idempotency(
@@ -134,6 +148,10 @@ class ExecutionEngine:
             decision=Decision.ALLOW.value,
             policy_id=self._policy.metadata.policy_id,
             status=ActionStatus.REQUESTED.value,
+            correlation_id=ctx.correlation_id,
+            parent_execution_id=ctx.parent_execution_id,
+            root_execution_id=ctx.root_execution_id,
+            session_id=ctx.session_id,
         )
         self._store.upsert_execution_record(record)
         self._record_event(
@@ -147,18 +165,26 @@ class ExecutionEngine:
         try:
             self._check_delegation(ctx)
         except SqubeGuardError:
-            self._finalize_blocked(ctx, "delegation denied")
+            self._finalize_blocked(
+                ctx, "delegation denied", from_status=ActionStatus.REQUESTED.value
+            )
             raise
 
         self._record_event(
             ctx.execution_id,
             EventType.CONTEXT_RESOLVED,
             ctx.agent.agent_id,
-            {"principal": ctx.principal.id if ctx.principal else None},
+            {
+                "principal": ctx.principal.id if ctx.principal else None,
+                "correlation_id": ctx.correlation_id,
+                "root_execution_id": ctx.root_execution_id,
+            },
             _utc_now_iso(),
         )
-        self._store.update_execution_record(
-            ctx.execution_id, status=ActionStatus.EVALUATED.value
+        self._transition(
+            ctx.execution_id,
+            ActionStatus.REQUESTED.value,
+            ActionStatus.EVALUATED.value,
         )
 
         try:
@@ -170,7 +196,7 @@ class ExecutionEngine:
             ctx.execution_id,
             decision=evaluation.decision.value,
             policy_id=evaluation.policy_id,
-            status=ActionStatus.EVALUATED.value,
+            policy_version=evaluation.policy_version,
         )
         self._record_event(
             ctx.execution_id,
@@ -190,9 +216,119 @@ class ExecutionEngine:
             raise SqubeBlockedError(ctx.execution_id, ctx.action)
 
         if evaluation.decision == Decision.REQUIRE_APPROVAL:
+            if self._approval_mode == "deferred":
+                return self._deferred_approval_path(
+                    ctx, evaluation, summary, params_hash
+                )
             return self._approval_path(ctx, fn, evaluation, summary, params_hash)
 
-        return self._execute(ctx, fn)
+        return self._begin_execute(ctx, fn, from_status=ActionStatus.EVALUATED.value)
+
+    def resume_after_approval(
+        self,
+        ctx: ExecutionContext,
+        fn: Callable[[], Any],
+        *,
+        approval_id: str,
+    ) -> Any:
+        row = self._store.get_execution(ctx.execution_id)
+        if not row:
+            raise SqubeGuardError(f"unknown execution {ctx.execution_id}")
+        if row["status"] == ActionStatus.WAITING_APPROVAL.value:
+            raise SqubeApprovalPendingError(ctx.execution_id, approval_id)
+        if row["status"] in (
+            ActionStatus.DENIED.value,
+            ActionStatus.EXPIRED.value,
+            ActionStatus.BLOCKED.value,
+        ):
+            raise SqubeDeniedError(ctx.execution_id, row["status"])
+        if hash_payload(ctx.parameters) != row["parameters_hash"]:
+            raise SqubeGuardError("parameters changed after authorization")
+        now = _utc_now_iso()
+        self._store.consume_approval_for_execution(
+            approval_id, ctx.execution_id, now
+        )
+        self._record_event(
+            ctx.execution_id,
+            EventType.ACTION_STARTED,
+            ctx.agent.agent_id,
+            {"approval_id": approval_id},
+            now,
+        )
+        return self._run_fn_body(ctx, fn)
+
+    def cancel_execution(self, execution_id: str, *, reason: str = "cancelled") -> None:
+        row = self._store.get_execution(execution_id)
+        if not row:
+            raise SqubeGuardError(f"unknown execution {execution_id}")
+        status = row["status"]
+        now = _utc_now_iso()
+        if status == ActionStatus.WAITING_APPROVAL.value:
+            self._transition(
+                execution_id,
+                ActionStatus.WAITING_APPROVAL.value,
+                ActionStatus.CANCELLED.value,
+                completed_at=now,
+                approval_reason=reason,
+            )
+            self._record_event(
+                execution_id,
+                EventType.ACTION_CANCELLED,
+                "operator",
+                {"reason": reason},
+                now,
+            )
+            return
+        if status == ActionStatus.APPROVED.value:
+            self._transition(
+                execution_id,
+                ActionStatus.APPROVED.value,
+                ActionStatus.CANCELLED.value,
+                completed_at=now,
+                approval_reason=reason,
+            )
+            self._record_event(
+                execution_id,
+                EventType.ACTION_CANCELLED,
+                "operator",
+                {"reason": reason},
+                now,
+            )
+            return
+        raise SqubeInvalidStateTransitionError(status, ActionStatus.CANCELLED.value)
+
+    def _deferred_approval_path(
+        self,
+        ctx: ExecutionContext,
+        evaluation: PolicyEvaluation,
+        summary: str,
+        params_hash: str,
+    ) -> Any:
+        approval_id = f"sq_apr_{uuid.uuid4().hex[:12]}"
+        now = _utc_now_iso()
+        expires = (
+            datetime.now(timezone.utc) + timedelta(seconds=self._approval_timeout)
+        ).replace(microsecond=0).isoformat()
+        self._transition(
+            ctx.execution_id,
+            ActionStatus.EVALUATED.value,
+            ActionStatus.WAITING_APPROVAL.value,
+        )
+        self._store.create_approval_request(
+            approval_id,
+            ctx.execution_id,
+            params_hash,
+            now,
+            expires,
+        )
+        self._record_event(
+            ctx.execution_id,
+            EventType.APPROVAL_REQUESTED,
+            ctx.agent.agent_id,
+            {"approval_id": approval_id, "expires_at": expires, "summary": summary},
+            now,
+        )
+        raise SqubeApprovalPendingError(ctx.execution_id, approval_id)
 
     def _approval_path(
         self,
@@ -204,8 +340,10 @@ class ExecutionEngine:
     ) -> Any:
         from sqube_agent_guard.approval.provider import ApprovalRequest
 
-        self._store.update_execution_record(
-            ctx.execution_id, status=ActionStatus.WAITING_APPROVAL.value
+        self._transition(
+            ctx.execution_id,
+            ActionStatus.EVALUATED.value,
+            ActionStatus.WAITING_APPROVAL.value,
         )
         self._record_event(
             ctx.execution_id,
@@ -231,20 +369,34 @@ class ExecutionEngine:
             self._approval_timeout,
         )
         if not approved:
-            status = ActionStatus.EXPIRED if reason == "timeout" else ActionStatus.DENIED
-            event = EventType.APPROVAL_EXPIRED if reason == "timeout" else EventType.APPROVAL_DENIED
-            self._store.update_execution_record(
-                ctx.execution_id,
-                status=status.value,
-                approval_reason=reason,
-                completed_at=_utc_now_iso(),
+            denied_at = _utc_now_iso()
+            if reason == "timeout":
+                self._transition(
+                    ctx.execution_id,
+                    ActionStatus.WAITING_APPROVAL.value,
+                    ActionStatus.EXPIRED.value,
+                    approval_reason=reason,
+                    completed_at=denied_at,
+                )
+                event = EventType.APPROVAL_EXPIRED
+            else:
+                self._transition(
+                    ctx.execution_id,
+                    ActionStatus.WAITING_APPROVAL.value,
+                    ActionStatus.DENIED.value,
+                    approval_reason=reason,
+                    completed_at=denied_at,
+                )
+                event = EventType.APPROVAL_DENIED
+            self._record_event(
+                ctx.execution_id, event, "human", {"reason": reason}, denied_at
             )
-            self._record_event(ctx.execution_id, event, "human", {"reason": reason}, _utc_now_iso())
             raise SqubeDeniedError(ctx.execution_id, reason or "denied")
 
-        self._store.update_execution_record(
+        self._transition(
             ctx.execution_id,
-            status=ActionStatus.APPROVED.value,
+            ActionStatus.WAITING_APPROVAL.value,
+            ActionStatus.APPROVED.value,
             approved_by=approved_by,
         )
         self._record_event(
@@ -254,12 +406,19 @@ class ExecutionEngine:
             {},
             _utc_now_iso(),
         )
-        return self._execute(ctx, fn)
+        return self._begin_execute(ctx, fn, from_status=ActionStatus.APPROVED.value)
 
-    def _finalize_blocked(self, ctx: ExecutionContext, reason: str) -> None:
-        self._store.update_execution_record(
+    def _finalize_blocked(
+        self,
+        ctx: ExecutionContext,
+        reason: str,
+        *,
+        from_status: str = ActionStatus.EVALUATED.value,
+    ) -> None:
+        self._transition(
             ctx.execution_id,
-            status=ActionStatus.BLOCKED.value,
+            from_status,
+            ActionStatus.BLOCKED.value,
             completed_at=_utc_now_iso(),
         )
         self._record_event(
@@ -273,19 +432,24 @@ class ExecutionEngine:
     def _handle_policy_error(
         self, ctx: ExecutionContext, fn: Callable[[], Any], error: Exception
     ) -> Any:
-        self._store.update_execution_record(
+        if self._on_error == "fail_open":
+            return self._begin_execute(ctx, fn, from_status=ActionStatus.EVALUATED.value)
+        self._transition(
             ctx.execution_id,
-            status=ActionStatus.FAILED.value,
+            ActionStatus.EVALUATED.value,
+            ActionStatus.FAILED.value,
             error_message=f"policy_error: {error}",
             completed_at=_utc_now_iso(),
         )
-        if self._on_error == "fail_open":
-            return self._execute(ctx, fn)
         raise SqubeGuardError(f"Policy evaluation failed: {error}") from error
 
-    def _execute(self, ctx: ExecutionContext, fn: Callable[[], Any]) -> Any:
-        self._store.update_execution_record(
-            ctx.execution_id, status=ActionStatus.EXECUTING.value
+    def _begin_execute(
+        self, ctx: ExecutionContext, fn: Callable[[], Any], *, from_status: str
+    ) -> Any:
+        self._transition(
+            ctx.execution_id,
+            from_status,
+            ActionStatus.EXECUTING.value,
         )
         self._record_event(
             ctx.execution_id,
@@ -294,41 +458,48 @@ class ExecutionEngine:
             {},
             _utc_now_iso(),
         )
+        return self._run_fn_body(ctx, fn)
+
+    def _run_fn_body(self, ctx: ExecutionContext, fn: Callable[[], Any]) -> Any:
         start = time.perf_counter()
         try:
             result = self._with_interceptors(ctx, fn)()
         except Exception as exc:
             duration_ms = int((time.perf_counter() - start) * 1000)
-            self._store.update_execution_record(
+            failed_at = _utc_now_iso()
+            self._transition(
                 ctx.execution_id,
-                status=ActionStatus.FAILED.value,
+                ActionStatus.EXECUTING.value,
+                ActionStatus.FAILED.value,
                 result_status="FAILED",
                 error_message=str(exc),
                 duration_ms=duration_ms,
-                completed_at=_utc_now_iso(),
+                completed_at=failed_at,
             )
             self._record_event(
                 ctx.execution_id,
                 EventType.ACTION_FAILED,
                 ctx.agent.agent_id,
                 {"error": str(exc)},
-                _utc_now_iso(),
+                failed_at,
             )
             raise
         duration_ms = int((time.perf_counter() - start) * 1000)
-        self._store.update_execution_record(
+        done_at = _utc_now_iso()
+        self._transition(
             ctx.execution_id,
-            status=ActionStatus.SUCCEEDED.value,
+            ActionStatus.EXECUTING.value,
+            ActionStatus.SUCCEEDED.value,
             result_status="SUCCESS",
             duration_ms=duration_ms,
-            completed_at=_utc_now_iso(),
+            completed_at=done_at,
         )
         self._record_event(
             ctx.execution_id,
             EventType.ACTION_SUCCEEDED,
             ctx.agent.agent_id,
             {},
-            _utc_now_iso(),
+            done_at,
         )
         return result
 

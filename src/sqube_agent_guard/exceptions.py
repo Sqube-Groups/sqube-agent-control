@@ -20,6 +20,39 @@ class SqubeGuardError(Exception):
     """Raised on guard failures in fail_closed mode."""
 
 
+class SqubeInvalidStateTransitionError(SqubeGuardError):
+    def __init__(
+        self, from_status: str, to_status: str, *, execution_id: str | None = None
+    ) -> None:
+        self.from_status = from_status
+        self.to_status = to_status
+        self.execution_id = execution_id
+        suffix = f" (execution_id={execution_id})" if execution_id else ""
+        super().__init__(
+            f"Invalid execution transition {from_status} -> {to_status}{suffix}"
+        )
+
+
+class SqubeApprovalPendingError(SqubeGuardError):
+    """Execution is waiting for a deferred human approval."""
+
+    def __init__(self, execution_id: str, approval_id: str) -> None:
+        self.execution_id = execution_id
+        self.approval_id = approval_id
+        super().__init__(
+            f"Approval pending (approval_id={approval_id}, execution_id={execution_id})"
+        )
+
+
+class SqubeApprovalError(SqubeGuardError):
+    """Approval could not be applied (already decided, expired, or consumed)."""
+
+    def __init__(self, approval_id: str, reason: str) -> None:
+        self.approval_id = approval_id
+        self.reason = reason
+        super().__init__(f"Approval {approval_id}: {reason}")
+
+
 class SqubeIdempotencyConflictError(Exception):
     """Raised when the same idempotency key is used while a prior run is still active."""
 

@@ -2,6 +2,15 @@
 
 ## 1.0.0 (unreleased)
 
+### Release hardening (in progress on `feat/v1.0-core`)
+
+- Explicit execution state machine with illegal-transition tests
+- Deferred approvals (`approval_mode="deferred"`) with durable `approval_requests`
+- CLI `approvals grant|deny|pending`; `resume_after_approval` with one-time approval consume
+- Correlation/root/session IDs persisted on execution records
+- E2E demo: `examples/python/agent_workflow_demo.py`
+- Maintainer security checklist: `docs_internal_never_commit/SECURITY_REVIEW_v1.md.template`
+
 ### Python (reference SDK)
 
 - `ExecutionEngine` with policy evaluation, approvals, delegation checks, idempotency keys, interceptors, and optional event sinks
