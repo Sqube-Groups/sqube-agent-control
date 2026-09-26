@@ -1,3 +1,10 @@
+from sqube_agent_guard.exceptions import (
+    SqubeBlockedError,
+    SqubeDeniedError,
+    SqubeGuardError,
+    SqubeIdempotencyConflictError,
+    SqubeIdempotencyReplayError,
+)
 from sqube_agent_guard.guard import ExecutionGuard
 from sqube_agent_guard.models import ActionStatus, Decision
 from sqube_agent_guard.execution.context import ExecutionContext
@@ -18,5 +25,10 @@ __all__ = [
     "RulePolicy",
     "PolicyEvaluation",
     "load_policy_bundle",
+    "SqubeBlockedError",
+    "SqubeDeniedError",
+    "SqubeGuardError",
+    "SqubeIdempotencyConflictError",
+    "SqubeIdempotencyReplayError",
 ]
 __version__ = "1.0.0"

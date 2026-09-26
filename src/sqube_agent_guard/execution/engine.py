@@ -16,6 +16,7 @@ from sqube_agent_guard.exceptions import (
     SqubeIdempotencyReplayError,
 )
 from sqube_agent_guard.execution.context import ExecutionContext
+from sqube_agent_guard.execution.interceptor import ExecutionInterceptor
 from sqube_agent_guard.identity.models import AgentIdentity
 from sqube_agent_guard.ledger.events import EventType, ExecutionEvent
 from sqube_agent_guard.telemetry.sink import EventSink
@@ -48,6 +49,7 @@ class ExecutionEngine:
         approval_timeout_seconds: int = 300,
         on_error: OnErrorMode = "fail_closed",
         event_sinks: Sequence[EventSink] | None = None,
+        interceptors: Sequence[ExecutionInterceptor] | None = None,
     ) -> None:
         if policy is None:
             policy = CallablePolicy(default_policy)
@@ -57,6 +59,7 @@ class ExecutionEngine:
         self._approval_timeout = approval_timeout_seconds
         self._on_error = on_error
         self._event_sinks = tuple(event_sinks or ())
+        self._interceptors = tuple(interceptors or ())
 
     @property
     def store(self) -> ExecutionStore:
@@ -293,7 +296,7 @@ class ExecutionEngine:
         )
         start = time.perf_counter()
         try:
-            result = fn()
+            result = self._with_interceptors(ctx, fn)()
         except Exception as exc:
             duration_ms = int((time.perf_counter() - start) * 1000)
             self._store.update_execution_record(
@@ -328,6 +331,21 @@ class ExecutionEngine:
             _utc_now_iso(),
         )
         return result
+
+    def _with_interceptors(
+        self, ctx: ExecutionContext, fn: Callable[[], Any]
+    ) -> Callable[[], Any]:
+        chain: Callable[[], Any] = fn
+        for interceptor in reversed(self._interceptors):
+            inner = chain
+
+            def chain(
+                i: ExecutionInterceptor = interceptor,
+                inner: Callable[[], Any] = inner,
+            ) -> Any:
+                return i.intercept(ctx, inner)
+
+        return chain
 
 
 def context_from_wrap(

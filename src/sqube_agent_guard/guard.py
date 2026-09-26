@@ -11,6 +11,7 @@ from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.ledger import Ledger
 from sqube_agent_guard.models import Decision
 from sqube_agent_guard.policy.engine import CallablePolicy, Policy, PolicyEvaluation
+from sqube_agent_guard.config import ledger_path_from_env
 from sqube_agent_guard.telemetry.sink import EventSink
 
 OnErrorMode = Literal["fail_open", "fail_closed"]
@@ -48,25 +49,26 @@ class ExecutionGuard:
         self,
         *,
         policy: Callable[..., Decision] | Policy | None = None,
-        ledger_path: str = "sqube_ledger.sqlite3",
+        ledger_path: str | None = None,
         approval_timeout_seconds: int = 300,
         on_error: OnErrorMode = "fail_closed",
         approval_fn: Callable[..., tuple[bool, str | None, str | None]] | None = None,
         event_sinks: Sequence[EventSink] | None = None,
     ) -> None:
         policy_obj = _as_policy(policy)
+        resolved_ledger = ledger_path or ledger_path_from_env()
         approval_provider = (
             _LegacyApprovalAdapter(approval_fn) if approval_fn else CliApprovalProvider()
         )
         self._engine = ExecutionEngine(
             policy=policy_obj,
-            ledger_path=ledger_path,
+            ledger_path=resolved_ledger,
             approval_provider=approval_provider,
             approval_timeout_seconds=approval_timeout_seconds,
             on_error=on_error,
             event_sinks=event_sinks,
         )
-        self._ledger = Ledger(ledger_path)
+        self._ledger = Ledger(resolved_ledger)
 
     def simulate(self, ctx: ExecutionContext) -> PolicyEvaluation:
         return self._engine.simulate(ctx)

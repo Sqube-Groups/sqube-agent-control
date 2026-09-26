@@ -1,16 +1,14 @@
 # Sqube Agent Control
 
-> Open-source infrastructure for controlling AI agent actions.
+> **Open-source execution authorization infrastructure for AI agents.**
 
-**v0.1 is an experiment.** SDK wrapping is bypassable. This is **not** a replacement for IAM, gateways, or security controls. It exists to learn whether execution-decision tooling has pull in real teams.
+Wrap consequential actions, evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and record tamper-evident execution events. **v1.0** adds composable policies, simulation/explain, declarative policy bundles, hash-chained events (Python + Node), and operator CLI commands.
 
-Sqube Execution Guard (v0.1) wraps a consequential action, deterministically decides `ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`, optionally pauses for a human via CLI, and writes an append-only SQLite execution record.
-
-Do not use messaging like “secure your agents,” “enterprise control plane,” or “prevent all unauthorized actions.”
+SDK wrapping is bypassable if application code skips the guard. This is **not** a replacement for IAM, gateways, or production security controls.
 
 ## Status
 
-**Experimental — API may change.**
+**v1.0.0** — Python core is the reference implementation; Node aligns on policy contracts and event chains; Rust ships v0.1-style guard plus contract tests. See [CHANGELOG.md](CHANGELOG.md).
 
 ## SDKs
 
@@ -20,7 +18,7 @@ Do not use messaging like “secure your agents,” “enterprise control plane,
 | Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
 | Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` |
 
-All three share the same v0.1 execution-guard behavior (deterministic policy, optional approval, SQLite ledger). Public overview: **[GitHub Pages intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
+Shared policy contract tests across Python, Node, and Rust. Public docs: **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
 
 ## Quick start (Python)
 
