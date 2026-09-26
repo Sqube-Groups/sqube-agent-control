@@ -321,7 +321,15 @@ def context_from_wrap(
     parameters: dict[str, Any],
     environment: str | None = None,
     delegation_chain: tuple[Delegation, ...] = (),
+    idempotency_key: str | None = None,
+    principal_type: str | None = None,
+    principal_id: str | None = None,
 ) -> ExecutionContext:
+    from sqube_agent_guard.identity.models import Principal
+
+    principal = None
+    if principal_type and principal_id:
+        principal = Principal(type=principal_type, id=principal_id)
     return ExecutionContext(
         execution_id=execution_id,
         agent=AgentIdentity(agent_id=agent_id, environment=environment),
@@ -330,4 +338,6 @@ def context_from_wrap(
         parameters=parameters,
         environment=environment,
         delegation_chain=delegation_chain,
+        idempotency_key=idempotency_key,
+        principal=principal,
     )

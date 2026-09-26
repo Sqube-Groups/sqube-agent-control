@@ -78,12 +78,16 @@ class ExecutionGuard:
         resource: str | Callable[..., str] | None = None,
         agent_id: str = "default",
         environment: str | None = None,
+        idempotency_key: str | Callable[..., str] | None = None,
+        principal_type: str | None = None,
+        principal_id: str | None = None,
     ) -> Callable:
         def decorator(fn: Callable) -> Callable:
             @functools.wraps(fn)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
                 execution_id = _new_execution_id()
                 resource_val = self._resolve_resource(resource, args, kwargs)
+                idem_val = self._resolve_resource(idempotency_key, args, kwargs)
                 ctx = context_from_wrap(
                     execution_id=execution_id,
                     agent_id=agent_id,
@@ -91,6 +95,9 @@ class ExecutionGuard:
                     resource=resource_val,
                     parameters=kwargs if kwargs else {"args": args},
                     environment=environment,
+                    idempotency_key=idem_val,
+                    principal_type=principal_type,
+                    principal_id=principal_id,
                 )
                 ctx.timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
                 return self._engine.run_controlled(ctx, lambda: fn(*args, **kwargs))
