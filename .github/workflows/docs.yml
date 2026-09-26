@@ -1,10 +1,10 @@
 name: Deploy docs to GitHub Pages
 
-# Deploys only on pushes to main (not staging, feature branches, or PRs).
+# Deploys on pushes to main or staging when website/ changes (Docusaurus → GitHub Pages).
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
     paths:
       - "website/**"
       - ".github/workflows/docs.yml"
@@ -42,7 +42,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
