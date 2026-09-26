@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- npm README repository link points at `main`; align package version with `v1.0.2` tag (do not retag without bumping semver).
+
 ## 1.0.1
 
 - Registry metadata refresh (npm README/keywords); republish requires new semver because 1.0.0 is immutable on npm/PyPI.
