@@ -23,7 +23,7 @@ Agent → Action request → Policy → ALLOW / BLOCK / REQUIRE_APPROVAL → Exe
 
 ## Security boundary
 
-v1.0 distinguishes **SDK guard** (wrapper), **interceptor**, **MCP adapter**, and future **gateway** enforcement. See the repository `docs_internal_never_commit/` security notes for maintainers.
+v1.0 distinguishes **SDK guard** (wrapper), **interceptor**, **MCP adapter**, and future **gateway** enforcement. See [Security model](./security-model) and [Threat model](./threat-model) on this site.
 
 ## SDK parity (v1.0)
 
