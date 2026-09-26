@@ -39,6 +39,7 @@ test("ALLOW executes and writes ledger", async () => {
   assert.equal(await run(), "ok");
   const row = guard.ledger.getLatest();
   assert.equal(row?.status, ActionStatus.SUCCEEDED);
+  assert.equal(guard.ledger.verifyChain(row?.execution_id), true);
 });
 
 test("BLOCK does not execute", async () => {

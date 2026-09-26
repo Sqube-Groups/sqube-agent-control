@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { randomBytes } from "node:crypto";
 import { SqubeBlockedError, SqubeDeniedError, SqubeGuardError } from "./errors.js";
+import { EventType } from "./events.js";
 import { Ledger } from "./ledger.js";
 import { promptCliApproval } from "./approval.js";
 import { defaultPolicy } from "./policy.js";
@@ -136,6 +137,13 @@ export class ExecutionGuard {
       policy_id: policyId(this.policy),
       status: ActionStatus.REQUESTED,
     });
+    this.ledger.appendEvent(
+      executionId,
+      EventType.ACTION_REQUESTED,
+      agentId,
+      { action, resource },
+      createdAt
+    );
 
     let decision: Decision;
     try {
@@ -148,12 +156,27 @@ export class ExecutionGuard {
       decision,
       status: ActionStatus.EVALUATED,
     });
+    this.ledger.appendEvent(
+      executionId,
+      EventType.POLICY_EVALUATED,
+      "policy",
+      { decision },
+      utcNowIso()
+    );
 
     if (decision === Decision.BLOCK) {
+      const blockedAt = utcNowIso();
       this.ledger.updateStatus(executionId, {
         status: ActionStatus.BLOCKED,
-        completed_at: utcNowIso(),
+        completed_at: blockedAt,
       });
+      this.ledger.appendEvent(
+        executionId,
+        EventType.ACTION_BLOCKED,
+        "policy",
+        { reason: "blocked" },
+        blockedAt
+      );
       throw new SqubeBlockedError(executionId, action);
     }
 
@@ -161,6 +184,13 @@ export class ExecutionGuard {
       this.ledger.updateStatus(executionId, {
         status: ActionStatus.WAITING_APPROVAL,
       });
+      this.ledger.appendEvent(
+        executionId,
+        EventType.APPROVAL_REQUESTED,
+        "policy",
+        {},
+        utcNowIso()
+      );
       const { approved, approvedBy, reason } = await this.approvalFn({
         executionId,
         agentId,
@@ -172,17 +202,34 @@ export class ExecutionGuard {
       if (!approved) {
         const status =
           reason === "timeout" ? ActionStatus.EXPIRED : ActionStatus.DENIED;
+        const deniedAt = utcNowIso();
+        const eventType =
+          reason === "timeout" ? EventType.APPROVAL_EXPIRED : EventType.APPROVAL_DENIED;
         this.ledger.updateStatus(executionId, {
           status,
           approval_reason: reason,
-          completed_at: utcNowIso(),
+          completed_at: deniedAt,
         });
+        this.ledger.appendEvent(
+          executionId,
+          eventType,
+          "human",
+          { reason },
+          deniedAt
+        );
         throw new SqubeDeniedError(executionId, reason ?? "denied");
       }
       this.ledger.updateStatus(executionId, {
         status: ActionStatus.APPROVED,
         approved_by: approvedBy,
       });
+      this.ledger.appendEvent(
+        executionId,
+        EventType.APPROVAL_GRANTED,
+        approvedBy ?? "cli_user",
+        {},
+        utcNowIso()
+      );
     }
 
     return this.runFn(executionId, fn, args);
@@ -211,27 +258,50 @@ export class ExecutionGuard {
     args: unknown[]
   ): ReturnType<T> {
     this.ledger.updateStatus(executionId, { status: ActionStatus.EXECUTING });
+    this.ledger.appendEvent(
+      executionId,
+      EventType.ACTION_STARTED,
+      "agent",
+      {},
+      utcNowIso()
+    );
     const start = performance.now();
     try {
       const result = fn(...args) as ReturnType<T>;
       const durationMs = Math.round(performance.now() - start);
+      const doneAt = utcNowIso();
       this.ledger.updateStatus(executionId, {
         status: ActionStatus.SUCCEEDED,
         result_status: "SUCCESS",
         duration_ms: durationMs,
-        completed_at: utcNowIso(),
+        completed_at: doneAt,
       });
+      this.ledger.appendEvent(
+        executionId,
+        EventType.ACTION_SUCCEEDED,
+        "agent",
+        {},
+        doneAt
+      );
       return result;
     } catch (err) {
       const durationMs = Math.round(performance.now() - start);
       const message = err instanceof Error ? err.message : String(err);
+      const failedAt = utcNowIso();
       this.ledger.updateStatus(executionId, {
         status: ActionStatus.FAILED,
         result_status: "FAILED",
         error_message: message,
         duration_ms: durationMs,
-        completed_at: utcNowIso(),
+        completed_at: failedAt,
       });
+      this.ledger.appendEvent(
+        executionId,
+        EventType.ACTION_FAILED,
+        "agent",
+        { error: message },
+        failedAt
+      );
       throw err;
     }
   }
