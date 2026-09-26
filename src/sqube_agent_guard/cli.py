@@ -1,43 +1,118 @@
-"""CLI entry point for inspecting ledger (v0.1 minimal)."""
+"""Sqube Agent Control CLI (v1)."""
 
 from __future__ import annotations
 
 import argparse
-import sqlite3
+import json
 import sys
+
+from sqube_agent_guard.execution.context import ExecutionContext
+from sqube_agent_guard.execution.engine import ExecutionEngine, _new_execution_id, context_from_wrap
+from sqube_agent_guard.guard import ExecutionGuard, _as_policy
+from sqube_agent_guard.identity.models import AgentIdentity
+from sqube_agent_guard.ledger.store import SQLiteExecutionStore
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="sqube-agent-guard", description="Sqube Execution Guard CLI")
+    parser = argparse.ArgumentParser(prog="sqube-agent-guard", description="Sqube Agent Control CLI")
     parser.add_argument(
-        "ledger",
-        nargs="?",
+        "--ledger",
         default="sqube_ledger.sqlite3",
-        help="Path to SQLite ledger",
+        help="SQLite execution store path",
     )
-    parser.add_argument("--last", type=int, default=10, help="Show last N records")
+    sub = parser.add_subparsers(dest="command")
+
+    execs = sub.add_parser("executions", help="List recent executions")
+    execs.add_argument("--limit", type=int, default=10)
+
+    show = sub.add_parser("execution", help="Show one execution")
+    show.add_argument("execution_id")
+
+    verify = sub.add_parser("ledger", help="Ledger operations")
+    verify_sub = verify.add_subparsers(dest="ledger_cmd")
+    verify_sub.add_parser("verify", help="Verify event hash chains")
+
+    sim = sub.add_parser("simulate", help="Dry-run policy evaluation")
+    sim.add_argument("--agent", default="default")
+    sim.add_argument("--action", required=True)
+    sim.add_argument("--resource", default=None)
+    sim.add_argument("--environment", default=None)
+
+    expl = sub.add_parser("explain", help="Explain policy decision")
+    expl.add_argument("--agent", default="default")
+    expl.add_argument("--action", required=True)
+    expl.add_argument("--resource", default=None)
+    expl.add_argument("--environment", default=None)
+
+    parser.add_argument("--last", type=int, default=10, help="Limit for default list view")
+
     args = parser.parse_args()
 
-    try:
-        conn = sqlite3.connect(args.ledger)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT execution_id, action, decision, status, created_at FROM execution_records "
-            "ORDER BY created_at DESC LIMIT ?",
-            (args.last,),
-        ).fetchall()
-    except sqlite3.Error as exc:
-        print(f"Error reading ledger: {exc}", file=sys.stderr)
-        sys.exit(1)
+    if args.command is None:
+        _legacy_list(args)
+        return
 
+    store = SQLiteExecutionStore(args.ledger)
+
+    if args.command == "executions":
+        rows = store.list_executions(args.limit)
+        for row in rows:
+            print(
+                f"{row['created_at']}  {row['execution_id']}  {row['action']}  "
+                f"{row['decision']}  {row['status']}"
+            )
+        return
+
+    if args.command == "execution":
+        row = store.get_execution(args.execution_id)
+        if not row:
+            print("Not found.", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(row, indent=2, default=str))
+        events = store.get_events(args.execution_id)
+        print("\nEvents:")
+        for event in events:
+            print(f"  {event.timestamp}  {event.event_type.value}  {event.actor}")
+        return
+
+    if args.command == "ledger" and args.ledger_cmd == "verify":
+        ok = store.verify_chain()
+        print("OK" if ok else "INTEGRITY_FAILURE")
+        sys.exit(0 if ok else 2)
+
+    if args.command in ("simulate", "explain"):
+        guard = ExecutionGuard(ledger_path=args.ledger)
+        ctx = context_from_wrap(
+            execution_id=_new_execution_id(),
+            agent_id=args.agent,
+            action=args.action,
+            resource=args.resource,
+            parameters={},
+            environment=args.environment,
+        )
+        result = guard.explain(ctx) if args.command == "explain" else guard.simulate(ctx)
+        print(f"Decision: {result.decision.value}")
+        print(f"Policy: {result.policy_id} (v{result.policy_version})")
+        print(f"Reason: {result.reason}")
+        if result.matched_rules:
+            print("Matched:", ", ".join(result.matched_rules))
+        if result.failed_rules:
+            print("Failed:", ", ".join(result.failed_rules))
+        return
+
+    parser.print_help()
+
+
+def _legacy_list(args) -> None:
+    store = SQLiteExecutionStore(args.ledger)
+    rows = store.list_executions(args.last)
     if not rows:
         print("No records.")
         return
-
     for row in rows:
         print(
-            f"{row['created_at']}  {row['execution_id']}  "
-            f"{row['action']}  {row['decision']}  {row['status']}"
+            f"{row['created_at']}  {row['execution_id']}  {row['action']}  "
+            f"{row['decision']}  {row['status']}"
         )
 
 

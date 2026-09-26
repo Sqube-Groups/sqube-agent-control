@@ -37,6 +37,7 @@ class ActionRecord:
     decision: str
     policy_id: str
     status: str
+    policy_version: str | None = None
     approved_by: str | None = None
     approval_reason: str | None = None
     result_status: str | None = None

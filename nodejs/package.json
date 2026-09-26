@@ -1,8 +1,8 @@
 {
   "name": "sqube-agent-guard",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "readme": "README.md",
-  "description": "Developer-side execution guardrail (v0.1 experiment)",
+  "description": "Execution authorization infrastructure for AI agents (Node SDK; v1 parity in progress)",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

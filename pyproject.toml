@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sqube-agent-guard"
-version = "0.1.2"
-description = "Developer-side execution guardrail with decision, optional human pause, and append-only ledger (v0.1 experiment)"
+version = "1.0.0"
+description = "Open-source execution authorization and control infrastructure for AI agents"
 readme = "README.pypi.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Sqube Groups" }]
 keywords = ["ai", "agents", "execution", "guardrail", "policy"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
