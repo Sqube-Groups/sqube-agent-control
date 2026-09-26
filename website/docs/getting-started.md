@@ -1,6 +1,6 @@
 # Getting started
 
-## Python
+## Python SDK
 
 ```bash
 pip install sqube-agent-guard
@@ -14,7 +14,7 @@ def policy(action, resource, agent_id, **ctx):
         return Decision.BLOCK
     return Decision.ALLOW
 
-guard = ExecutionGuard()
+guard = ExecutionGuard(policy=policy)
 
 @guard.wrap_action(action="file.read", resource="file:/tmp/demo.txt")
 def read_demo():
@@ -29,6 +29,21 @@ Inspect the ledger:
 sqube-agent-guard executions --limit 5
 sqube-agent-guard ledger verify
 ```
+
+## Control plane (optional)
+
+Fleet dashboard and HTTP APIs for agents, policies, executions, and approvals:
+
+```bash
+pip install "sqube-agent-guard[control-plane]"
+sqube-agent-guard serve --data-dir .sqube --port 8080
+```
+
+1. Open **http://127.0.0.1:8080/setup** and create the first admin (you choose the username).
+2. Register agents/policies via API or examples under `examples/python/`.
+3. Optional: `export SQUBE_CONTROL_PLANE_URL=http://127.0.0.1:8080` so the Python SDK exports events to the plane.
+
+See [Control plane](./control-plane.md) and [Event ingestion](./event-ingestion.md).
 
 ## Node.js
 
@@ -46,10 +61,11 @@ await run();
 
 ## Rust
 
-Clone this repository and build from `rust/` (crates.io publish is optional for v1.0).
+Clone the repository and build from `rust/`.
 
 ## Next steps
 
 - [Concepts](./concepts.md)
 - [Policies](./policies.md)
 - [CLI](./cli.md)
+- [Control plane authentication](./control-plane-auth.md)
