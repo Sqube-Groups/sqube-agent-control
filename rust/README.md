@@ -1,29 +1,29 @@
 # sqube-agent-guard (Rust)
 
-**Sqube Agent Control (Rust)** implements v1 **synchronous** execution semantics via [`ExecutionEngine`](src/execution_engine.rs). [`ExecutionGuard`](src/guard.rs) `wrap_action` delegates to the same engine path (shared contract tests in `tests/contract/`). Hash-chained events and Python-only features (idempotency, delegation, CLI) are out of scope for Rust v1.0 — see `tests/contract/V1_SYNC_SEMANTICS.md`. SDK wrapping is bypassable; this is **not** a kernel security boundary.
+**Sqube Agent Control (Rust)** — v1 synchronous `ExecutionEngine` and `ExecutionGuard` aligned with shared contract tests in `tests/contract/`.
+
+Python-only features (CLI, control plane, idempotency helpers) are not in this crate. SDK wrapping is bypassable; this is not a kernel security boundary.
 
 ## Install
 
-The crate is **not on crates.io yet**. Clone the repository and build from `rust/`:
+Not on crates.io yet. From this repository:
 
 ```bash
-git clone https://github.com/Sqube-Groups/sqube-agent-control.git
-cd sqube-agent-control/rust
+cd rust
 cargo build
 cargo test
 ```
 
-When published, `cargo add sqube-agent-guard` will work. Until then, use a path or git dependency in your `Cargo.toml` (adjust path/branch/tag to your layout):
+Path dependency:
 
 ```toml
-sqube-agent-guard = { path = "../sqube-agent-control/rust" }
-# sqube-agent-guard = { git = "https://github.com/Sqube-Groups/sqube-agent-control", branch = "main" }
+sqube-agent-guard = { path = "../rust" }
 ```
 
 ## Quick start
 
 ```rust
-use sqube_agent_guard::{Decision, ExecutionGuard, WrapOptions};
+use sqube_agent_guard::{ExecutionGuard, WrapOptions};
 
 let guard = ExecutionGuard::with_default_policy().with_ledger_path("sqube_ledger.sqlite3");
 
@@ -41,8 +41,8 @@ guard.wrap_action(
 
 ## Documentation
 
-- **Docs intro:** [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)
-- **Source & README:** [https://github.com/Sqube-Groups/sqube-agent-control](https://github.com/Sqube-Groups/sqube-agent-control)
+- Docs: https://sqube-groups.github.io/sqube-agent-control/docs/intro
+- Repository: https://github.com/Sqube-Groups/sqube-agent-control
 
 ## License
 

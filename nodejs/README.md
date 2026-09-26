@@ -1,6 +1,8 @@
 # sqube-agent-guard
 
-**Sqube Execution Guard** is a developer-side helper for v0.1 experiments: it wraps consequential actions, evaluates a deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), can pause for human approval via CLI, and appends decisions to a SQLite ledger. SDK wrapping is bypassable—this is **not** a security boundary and does not replace IAM, gateways, or other controls.
+**Sqube Agent Control (Node.js)** — execution authorization for AI agents with v1 synchronous semantics.
+
+Wrap actions, evaluate policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), deferred approval, and hash-chained ledger events. Shared behavior is covered by `tests/contract/` in the monorepo. SDK wrapping is bypassable; this is not a replacement for IAM or network controls.
 
 ## Install
 
@@ -32,8 +34,8 @@ await deleteFile("/tmp/example.txt");
 
 ## Documentation
 
-- **Docs site (intro):** [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)
-- **Source & examples:** [https://github.com/Sqube-Groups/sqube-agent-control](https://github.com/Sqube-Groups/sqube-agent-control) (optional LLM probe scripts live under `examples/` in the repo)
+- Docs: https://sqube-groups.github.io/sqube-agent-control/docs/intro
+- Repository: https://github.com/Sqube-Groups/sqube-agent-control
 
 ## License
 

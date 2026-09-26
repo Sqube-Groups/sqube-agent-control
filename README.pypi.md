@@ -2,14 +2,19 @@
 
 **Sqube Agent Control** — open-source execution authorization for AI agents.
 
-Wrap consequential actions, evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and record tamper-evident execution events. v1.0 adds composable policies, `simulate` / `explain`, and an execution store with hash-chained events.
-
-SDK-level control is bypassable if application code skips the guard. This is not a replacement for IAM, gateways, or production security controls.
+Evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and a tamper-evident execution ledger. The SDK is application-level; bypassing the guard is out of scope for v1.
 
 ## Install
 
 ```bash
 pip install sqube-agent-guard
+```
+
+Optional extras:
+
+```bash
+pip install "sqube-agent-guard[control-plane]"   # local API + dashboard
+pip install "sqube-agent-guard[otel]"            # OpenTelemetry bridge
 ```
 
 Requires Python 3.10+.
@@ -33,6 +38,18 @@ def send_email():
 send_email()
 ```
 
-## Docs
+## Control plane (optional)
+
+```bash
+sqube-agent-guard serve --data-dir .sqube
+```
+
+Open `http://127.0.0.1:8080/setup` on first run to create an administrator account.
+
+## Documentation
 
 https://sqube-groups.github.io/sqube-agent-control/docs/intro
+
+## License
+
+Apache-2.0 — Copyright © 2026 Sqube Groups
