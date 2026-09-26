@@ -1,0 +1,10 @@
+{
+  "name": "allow_low_risk",
+  "policy": "default",
+  "context": {
+    "agent_id": "bot",
+    "action": "file.read",
+    "resource": "file:/tmp/x"
+  },
+  "expected_decision": "ALLOW"
+}
