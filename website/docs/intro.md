@@ -14,7 +14,7 @@ v1.0 establishes agent identity, composable deterministic policies, approvals, t
 
 ## Status
 
-**v1.0.0** — Python core is release-grade; Node and Rust SDKs are aligning to the shared contract. SDK-level control is bypassable if application code skips the guard.
+**v1.0.0** — Shared synchronous execution contract across Python, Node, and Rust; Python is the full reference SDK. Node uses Promises for I/O but not a separate async execution model. SDK-level control is bypassable if application code skips the guard.
 
 ## Install
 

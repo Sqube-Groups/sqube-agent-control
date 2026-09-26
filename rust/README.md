@@ -1,6 +1,6 @@
 # sqube-agent-guard (Rust)
 
-**Sqube Execution Guard** is a developer-side helper for v0.1 experiments: deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human pause, and an append-only SQLite ledger. SDK wrapping is bypassable—this is **not** a security boundary.
+**Sqube Agent Control (Rust)** implements v1 **synchronous** execution semantics via [`ExecutionEngine`](src/execution_engine.rs). [`ExecutionGuard`](src/guard.rs) `wrap_action` delegates to the same engine path (shared contract tests in `tests/contract/`). Hash-chained events and Python-only features (idempotency, delegation, CLI) are out of scope for Rust v1.0 — see `tests/contract/V1_SYNC_SEMANTICS.md`. SDK wrapping is bypassable; this is **not** a kernel security boundary.
 
 ## Install
 

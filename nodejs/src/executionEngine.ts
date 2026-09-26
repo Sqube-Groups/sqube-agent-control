@@ -1,3 +1,12 @@
+/**
+ * v1 execution engine (Node).
+ *
+ * Public methods return Promises because Node uses async I/O for approvals, but v1.0
+ * semantics are synchronous: one action request moves through the shared state machine
+ * (policy → optional approval → execute → terminal status) without a separate async
+ * execution model. Deferred approval pauses until `resumeAfterApproval`; it is not
+ * background execution of the guarded function.
+ */
 import { randomBytes } from "node:crypto";
 import { EventType } from "./events.js";
 import {
@@ -259,7 +268,8 @@ export class ExecutionEngine {
     if (
       row.status === ActionStatus.DENIED ||
       row.status === ActionStatus.EXPIRED ||
-      row.status === ActionStatus.BLOCKED
+      row.status === ActionStatus.BLOCKED ||
+      row.status === ActionStatus.CANCELLED
     ) {
       throw new SqubeDeniedError(ctx.executionId, row.status);
     }

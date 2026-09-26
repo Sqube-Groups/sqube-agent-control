@@ -8,17 +8,17 @@ SDK wrapping is bypassable if application code skips the guard. This is **not** 
 
 ## Status
 
-**v1.0.0** — Python core is the reference implementation; Node aligns on policy contracts and event chains; Rust ships v0.1-style guard plus contract tests. See [CHANGELOG.md](CHANGELOG.md).
+**v1.0.0 (release candidate on `feat/v1.0-core`)** — synchronous execution semantics and shared contract tests across Python, Node, and Rust. **Python** is the reference implementation (full operator surface). **Node** and **Rust** implement `ExecutionEngine` + deferred approval + contract tests; they do **not** ship every Python-only capability. See [tests/contract/V1_SYNC_SEMANTICS.md](tests/contract/V1_SYNC_SEMANTICS.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## SDKs
 
-| Language | Package | Path |
-|----------|---------|------|
-| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | `sqube-agent-guard` (npm) | `nodejs/` |
-| Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` |
+| Language | Package | Path | v1.0 role |
+|----------|---------|------|-----------|
+| Python | `sqube-agent-guard` (PyPI) | `src/sqube_agent_guard/` | Reference: engine, CLI, idempotency, delegation, MCP adapter, hash-chained events |
+| Node.js | `sqube-agent-guard` (npm) | `nodejs/` | Contract + engine/guard; hash-chained events; Promises for I/O only |
+| Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` | Contract + engine/guard; `wrap_action` uses the same engine path |
 
-Shared policy contract tests across Python, Node, and Rust. Public docs: **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
+Shared policy and state-machine contract tests: `tests/contract/`. Public docs: **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
 
 ## Quick start (Python)
 

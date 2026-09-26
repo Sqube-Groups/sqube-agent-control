@@ -1,11 +1,9 @@
 use crate::approval::{prompt_cli_approval, ApprovalRequest};
 use crate::error::{
-    SqubeApprovalError, SqubeApprovalPendingError, SqubeBlockedError, SqubeDeniedError,
-    SqubeGuardError,
+    SqubeApprovalPendingError, SqubeBlockedError, SqubeDeniedError, SqubeGuardError,
 };
 use crate::ledger::Ledger;
 use crate::models::{ActionRecord, ActionStatus, Decision};
-use crate::state_machine::assert_transition;
 use chrono::{Duration, Utc};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -61,6 +59,15 @@ impl ExecutionEngine {
     pub fn with_approval_fn(mut self, f: ApprovalCallback) -> Self {
         self.approval_fn = f;
         self
+    }
+
+    pub fn with_policy_id(mut self, id: &str) -> Self {
+        self.policy_id = id.to_string();
+        self
+    }
+
+    pub fn latest_status(&self) -> rusqlite::Result<Option<String>> {
+        Ledger::new(&self.ledger_path)?.latest_status()
     }
 
     pub fn run_controlled<F, R>(

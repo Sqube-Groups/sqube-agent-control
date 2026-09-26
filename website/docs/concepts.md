@@ -18,13 +18,13 @@ Agent → Action request → Policy → ALLOW / BLOCK / REQUIRE_APPROVAL → Exe
 - **Delegated authority** — Optional delegation chain with scopes and expiry (Python v1).
 - **Policy** — Deterministic evaluation; LLMs are not the authorization authority.
 - **Decisions** — `ALLOW`, `BLOCK`, or `REQUIRE_APPROVAL`.
-- **Execution store** — Append-only events with hash chaining for tamper detection (Python v1).
+- **Execution store** — Append-only events with hash chaining for tamper detection (Python and Node; see SDK scope in the repo `tests/contract/V1_SYNC_SEMANTICS.md`).
 - **SDK guard** — Application-level control; bypassable if code skips the guard.
 
 ## Security boundary
 
 v1.0 distinguishes **SDK guard** (wrapper), **interceptor**, **MCP adapter**, and future **gateway** enforcement. See the repository `docs_internal_never_commit/` security notes for maintainers.
 
-## SDK parity
+## SDK parity (v1.0)
 
-Python ships the v1.0 core first. Node.js and Rust retain v0.1-compatible APIs while catching up to the shared contract tests in `tests/contract/`.
+All three SDKs share **synchronous v1 execution semantics** and the contract in `tests/contract/`. Python is the reference implementation (CLI, idempotency, delegation, MCP adapter). Node and Rust implement `ExecutionEngine` and pass the same policy/state/deferred tests; optional Python-only features are listed in `tests/contract/V1_SYNC_SEMANTICS.md`.

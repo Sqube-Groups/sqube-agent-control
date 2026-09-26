@@ -16,14 +16,18 @@ cd nodejs && npm test   # includes contractSemantics.test.ts
 cd rust && cargo test   # contract_fixtures + contract_semantics
 ```
 
-## Parity expectations
+## v1.0 synchronous semantics
+
+See **[V1_SYNC_SEMANTICS.md](./V1_SYNC_SEMANTICS.md)** — one lifecycle for all SDKs; Node Promises are transport only; deferred approval is a pause, not background execution.
+
+## Parity expectations (contract vs optional features)
 
 | Capability | Python | Node | Rust |
 |------------|--------|------|------|
 | Policy fixtures | yes | yes | yes |
 | State machine contract | yes | yes | yes |
 | `ExecutionEngine` sync + deferred | yes | yes | yes |
-| State machine contract | yes | yes | yes |
-| Hash-chained events (ledger) | yes | yes | partial (records + approvals) |
+| `ExecutionGuard` → engine | yes | yes | yes |
+| Hash-chained events (ledger) | yes | yes | no |
 
 All three SDKs run the same `deferred_approval.json` integration scenario in CI.

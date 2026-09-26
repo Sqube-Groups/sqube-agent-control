@@ -2,7 +2,7 @@
   "name": "sqube-agent-guard",
   "version": "1.0.0",
   "readme": "README.md",
-  "description": "Execution authorization infrastructure for AI agents (Node SDK; v1 parity in progress)",
+  "description": "Execution authorization for AI agents — v1 synchronous semantics and contract tests (see tests/contract/V1_SYNC_SEMANTICS.md)",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

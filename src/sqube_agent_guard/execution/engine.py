@@ -240,6 +240,7 @@ class ExecutionEngine:
             ActionStatus.DENIED.value,
             ActionStatus.EXPIRED.value,
             ActionStatus.BLOCKED.value,
+            ActionStatus.CANCELLED.value,
         ):
             raise SqubeDeniedError(ctx.execution_id, row["status"])
         if hash_payload(ctx.parameters) != row["parameters_hash"]:
