@@ -9,8 +9,8 @@ import sys
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.execution.engine import ExecutionEngine, _new_execution_id, context_from_wrap
 from sqube_agent_guard.guard import ExecutionGuard, _as_policy
-from sqube_agent_guard.identity.models import AgentIdentity
 from sqube_agent_guard.ledger.store import SQLiteExecutionStore
+from sqube_agent_guard.models import ActionStatus
 from sqube_agent_guard.policy.bundle import load_policy_bundle, validate_policy_bundle
 
 
@@ -56,6 +56,11 @@ def main() -> None:
     pol_sim.add_argument("--resource", default=None)
     pol_sim.add_argument("--environment", default=None)
 
+    appr = sub.add_parser("approvals", help="Approval queue inspection")
+    appr_sub = appr.add_subparsers(dest="approvals_cmd")
+    appr_pending = appr_sub.add_parser("pending", help="List executions waiting for approval")
+    appr_pending.add_argument("--limit", type=int, default=20)
+
     parser.add_argument("--last", type=int, default=10, help="Limit for default list view")
 
     args = parser.parse_args()
@@ -91,6 +96,20 @@ def main() -> None:
         ok = store.verify_chain()
         print("OK" if ok else "INTEGRITY_FAILURE")
         sys.exit(0 if ok else 2)
+
+    if args.command == "approvals" and args.approvals_cmd == "pending":
+        rows = store.list_executions(
+            args.limit, status=ActionStatus.WAITING_APPROVAL.value
+        )
+        if not rows:
+            print("No pending approvals.")
+            return
+        for row in rows:
+            print(
+                f"{row['created_at']}  {row['execution_id']}  {row['agent_id']}  "
+                f"{row['action']}  {row.get('resource') or '-'}"
+            )
+        return
 
     if args.command == "policy" and args.policy_cmd == "validate":
         errors = validate_policy_bundle(args.path)

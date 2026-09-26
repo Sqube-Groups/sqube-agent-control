@@ -26,7 +26,9 @@ class ExecutionStore(Protocol):
 
     def get_events(self, execution_id: str) -> list[ExecutionEvent]: ...
 
-    def list_executions(self, limit: int = 50) -> list[dict[str, Any]]: ...
+    def list_executions(
+        self, limit: int = 50, status: str | None = None
+    ) -> list[dict[str, Any]]: ...
 
     def verify_chain(self, execution_id: str | None = None) -> bool: ...
 
@@ -192,11 +194,20 @@ class SQLiteExecutionStore:
             )
         return events
 
-    def list_executions(self, limit: int = 50) -> list[dict[str, Any]]:
-        rows = self._conn.execute(
-            "SELECT * FROM execution_records ORDER BY created_at DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+    def list_executions(
+        self, limit: int = 50, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        if status:
+            rows = self._conn.execute(
+                "SELECT * FROM execution_records WHERE status = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM execution_records ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
         return [dict(r) for r in rows]
 
     def verify_chain(self, execution_id: str | None = None) -> bool:
