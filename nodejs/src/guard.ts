@@ -10,6 +10,7 @@ import {
   type OnErrorMode,
   type PolicyFn,
 } from "./types.js";
+import type { EventSink } from "./eventSink.js";
 import { Ledger } from "./ledger.js";
 
 function newExecutionId(): string {
@@ -32,6 +33,7 @@ export interface ExecutionGuardOptions {
   onError?: OnErrorMode;
   approvalFn?: ApprovalFn;
   approvalMode?: ApprovalMode;
+  eventSinks?: EventSink[];
 }
 
 export interface WrapActionOptions {

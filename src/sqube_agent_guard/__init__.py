@@ -15,6 +15,7 @@ from sqube_agent_guard.execution.engine import ExecutionEngine
 from sqube_agent_guard.identity.models import AgentIdentity, Principal
 from sqube_agent_guard.policy.bundle import load_policy_bundle
 from sqube_agent_guard.policy.engine import CallablePolicy, PolicyEvaluation, RulePolicy
+from sqube_agent_guard.telemetry.otel import OtelEventSink
 
 __all__ = [
     "ExecutionGuard",
@@ -36,5 +37,6 @@ __all__ = [
     "SqubeApprovalPendingError",
     "SqubeApprovalError",
     "SqubeInvalidStateTransitionError",
+    "OtelEventSink",
 ]
 __version__ = "1.0.0"

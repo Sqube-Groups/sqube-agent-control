@@ -78,6 +78,15 @@ def main() -> None:
     appr_deny.add_argument("--by", default="cli_operator")
     appr_deny.add_argument("--reason", default="denied_by_operator")
 
+    serve = sub.add_parser("serve", help="Run local control plane API and dashboard")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8080)
+    serve.add_argument(
+        "--data-dir",
+        default=".sqube",
+        help="Directory for control_plane.sqlite3 and sqube_ledger.sqlite3",
+    )
+
     authz = sub.add_parser("authorize", help="Evaluate policy from JSON on stdin (no ledger)")
     authz.add_argument(
         "--policy-bundle",
@@ -201,6 +210,22 @@ def main() -> None:
             print(str(exc), file=sys.stderr)
             sys.exit(1)
         print(json.dumps(out, indent=2))
+        return
+
+    if args.command == "serve":
+        try:
+            import uvicorn
+        except ImportError:
+            print(
+                "Control plane requires: pip install 'sqube-agent-guard[control-plane]'",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        from sqube_agent_guard.control_plane.api import create_app, default_store
+
+        store = default_store(args.data_dir)
+        app = create_app(store)
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
         return
 
     if args.command in ("simulate", "explain"):

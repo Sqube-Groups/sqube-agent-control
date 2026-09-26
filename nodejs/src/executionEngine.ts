@@ -20,6 +20,8 @@ import { Ledger } from "./ledger.js";
 import { defaultPolicy } from "./policy.js";
 import { redactValue } from "./redaction.js";
 import { promptCliApproval } from "./approval.js";
+import type { EventSink } from "./eventSink.js";
+import type { ExecutionEvent } from "./events.js";
 import {
   ActionStatus,
   Decision,
@@ -56,6 +58,7 @@ export class ExecutionEngine {
   private approvalTimeoutSeconds: number;
   private approvalFn: ApprovalFn;
   private onError: OnErrorMode;
+  private eventSinks: EventSink[];
 
   constructor(opts: {
     policy?: PolicyFn;
@@ -64,6 +67,7 @@ export class ExecutionEngine {
     approvalTimeoutSeconds?: number;
     approvalFn?: ApprovalFn;
     onError?: OnErrorMode;
+    eventSinks?: EventSink[];
   } = {}) {
     this.ledger = new Ledger(opts.ledgerPath ?? "sqube_ledger.sqlite3");
     this.policy = opts.policy ?? defaultPolicy;
@@ -71,6 +75,25 @@ export class ExecutionEngine {
     this.approvalTimeoutSeconds = opts.approvalTimeoutSeconds ?? 300;
     this.approvalFn = opts.approvalFn ?? promptCliApproval;
     this.onError = opts.onError ?? "fail_closed";
+    this.eventSinks = opts.eventSinks ?? [];
+  }
+
+  private recordEvent(
+    executionId: string,
+    eventType: EventType,
+    actor: string,
+    payload: Record<string, unknown>,
+    timestamp: string
+  ): ExecutionEvent {
+    const event = this.ledger.appendEvent(executionId, eventType, actor, payload, timestamp);
+    for (const sink of this.eventSinks) {
+      try {
+        sink.emit(event);
+      } catch {
+        /* observability only */
+      }
+    }
+    return event;
   }
 
   simulate(ctx: ExecutionContext): Decision {
@@ -102,7 +125,7 @@ export class ExecutionEngine {
       policy_id: this.policy.name || "policy",
       status: ActionStatus.REQUESTED,
     });
-    this.ledger.appendEvent(
+    this.recordEvent(
       ctx.executionId,
       EventType.ACTION_REQUESTED,
       ctx.agentId,
@@ -115,7 +138,7 @@ export class ExecutionEngine {
       ActionStatus.REQUESTED,
       ActionStatus.EVALUATED
     );
-    this.ledger.appendEvent(
+    this.recordEvent(
       ctx.executionId,
       EventType.CONTEXT_RESOLVED,
       ctx.agentId,
@@ -143,20 +166,28 @@ export class ExecutionEngine {
       throw new SqubeGuardError(`Policy evaluation failed: ${message}`);
     }
     this.ledger.updateStatus(ctx.executionId, { decision });
-    this.ledger.appendEvent(
+    this.recordEvent(
       ctx.executionId,
       EventType.POLICY_EVALUATED,
       "policy",
-      { decision },
+      { decision, policy_id: this.policy.name || "policy" },
       utcNowIso()
     );
 
     if (decision === Decision.BLOCK) {
+      const blockedAt = utcNowIso();
       this.ledger.transitionExecution(
         ctx.executionId,
         ActionStatus.EVALUATED,
         ActionStatus.BLOCKED,
-        { completed_at: utcNowIso() }
+        { completed_at: blockedAt }
+      );
+      this.recordEvent(
+        ctx.executionId,
+        EventType.ACTION_BLOCKED,
+        "policy",
+        { reason: "blocked" },
+        blockedAt
       );
       throw new SqubeBlockedError(ctx.executionId, ctx.action);
     }
@@ -180,7 +211,7 @@ export class ExecutionEngine {
           now,
           expires
         );
-        this.ledger.appendEvent(
+        this.recordEvent(
           ctx.executionId,
           EventType.APPROVAL_REQUESTED,
           ctx.agentId,
@@ -206,6 +237,13 @@ export class ExecutionEngine {
         ActionStatus.CANCELLED,
         { completed_at: now, approval_reason: reason }
       );
+      this.recordEvent(
+        executionId,
+        EventType.ACTION_CANCELLED,
+        "operator",
+        { reason },
+        now
+      );
       return;
     }
     if (row.status === ActionStatus.APPROVED) {
@@ -214,6 +252,13 @@ export class ExecutionEngine {
         ActionStatus.APPROVED,
         ActionStatus.CANCELLED,
         { completed_at: now, approval_reason: reason }
+      );
+      this.recordEvent(
+        executionId,
+        EventType.ACTION_CANCELLED,
+        "operator",
+        { reason },
+        now
       );
       return;
     }
@@ -231,6 +276,13 @@ export class ExecutionEngine {
       ActionStatus.EVALUATED,
       ActionStatus.WAITING_APPROVAL
     );
+    this.recordEvent(
+      ctx.executionId,
+      EventType.APPROVAL_REQUESTED,
+      ctx.agentId,
+      {},
+      utcNowIso()
+    );
     const { approved, approvedBy, reason } = await this.approvalFn({
       executionId: ctx.executionId,
       agentId: ctx.agentId,
@@ -247,11 +299,25 @@ export class ExecutionEngine {
         approval_reason: reason,
         completed_at: now,
       });
+      this.recordEvent(
+        ctx.executionId,
+        toStatus === ActionStatus.EXPIRED ? EventType.APPROVAL_EXPIRED : EventType.APPROVAL_DENIED,
+        "human",
+        { reason: reason ?? "denied" },
+        now
+      );
       throw new SqubeDeniedError(ctx.executionId, reason ?? "denied");
     }
     this.ledger.transitionExecution(ctx.executionId, ActionStatus.WAITING_APPROVAL, ActionStatus.APPROVED, {
       approved_by: approvedBy,
     });
+    this.recordEvent(
+      ctx.executionId,
+      EventType.APPROVAL_GRANTED,
+      approvedBy ?? "cli_user",
+      {},
+      now
+    );
     return this.beginExecute(ctx, fn, ActionStatus.APPROVED);
   }
 
@@ -285,7 +351,7 @@ export class ExecutionEngine {
       throw new SqubeDeniedError(ctx.executionId, "approval_expired");
     }
     this.ledger.consumeApproval(approvalId, ctx.executionId, now);
-    this.ledger.appendEvent(
+    this.recordEvent(
       ctx.executionId,
       EventType.ACTION_STARTED,
       ctx.agentId,
@@ -301,7 +367,7 @@ export class ExecutionEngine {
     fromStatus: ActionStatus = ActionStatus.EVALUATED
   ): Promise<T> {
     this.ledger.transitionExecution(ctx.executionId, fromStatus, ActionStatus.EXECUTING);
-    this.ledger.appendEvent(
+    this.recordEvent(
       ctx.executionId,
       EventType.ACTION_STARTED,
       ctx.agentId,
@@ -327,11 +393,11 @@ export class ExecutionEngine {
           completed_at: doneAt,
         }
       );
-      this.ledger.appendEvent(
+      this.recordEvent(
         ctx.executionId,
         EventType.ACTION_SUCCEEDED,
         ctx.agentId,
-        {},
+        { duration_ms: durationMs },
         doneAt
       );
       return result;
@@ -350,11 +416,11 @@ export class ExecutionEngine {
           completed_at: failedAt,
         }
       );
-      this.ledger.appendEvent(
+      this.recordEvent(
         ctx.executionId,
         EventType.ACTION_FAILED,
         ctx.agentId,
-        { error: message },
+        { error: message, duration_ms: durationMs },
         failedAt
       );
       throw err;

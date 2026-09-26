@@ -89,7 +89,10 @@ class ExecutionEngine:
             execution_id, event_type, actor, payload, timestamp
         )
         for sink in self._event_sinks:
-            sink.emit(event)
+            try:
+                sink.emit(event)
+            except Exception:
+                pass
         return event
 
     def simulate(self, ctx: ExecutionContext) -> PolicyEvaluation:
@@ -486,7 +489,7 @@ class ExecutionEngine:
                 ctx.execution_id,
                 EventType.ACTION_FAILED,
                 ctx.agent.agent_id,
-                {"error": str(exc)},
+                {"error": str(exc), "duration_ms": duration_ms},
                 failed_at,
             )
             raise
@@ -504,7 +507,7 @@ class ExecutionEngine:
             ctx.execution_id,
             EventType.ACTION_SUCCEEDED,
             ctx.agent.agent_id,
-            {},
+            {"duration_ms": duration_ms},
             done_at,
         )
         return result

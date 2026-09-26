@@ -7,6 +7,7 @@ Python is the **reference implementation**. Other SDKs must match these artifact
 | `fixtures/*.json` | Default policy decisions (ALLOW / BLOCK / REQUIRE_APPROVAL) |
 | `v1_semantics.json` | Execution status machine + illegal transitions + deferred approval flow |
 | `deferred_approval.json` | End-to-end deferred grant → resume scenario (all SDKs) |
+| `otel_semantics.json` | OpenTelemetry span events, attributes, and metrics (Python + Node) |
 
 ## Running contract tests
 

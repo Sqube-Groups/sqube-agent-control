@@ -21,5 +21,8 @@ v1.0 defines **one** execution lifecycle, shared via `v1_semantics.json` and `de
 | Delegation / principal models | yes | no | no |
 | Operator CLI | yes | no | no |
 | MCP adapter | yes | no | no |
+| OpenTelemetry (optional) | yes | yes | contract only (`otel_semantics.json`) |
 
 Anything listed “no” for Node/Rust is **out of scope** for v1.0 parity; those SDKs must not document those features as supported.
+
+OTel observes ledger events **after** persistence. See `website/docs/observability.md`.

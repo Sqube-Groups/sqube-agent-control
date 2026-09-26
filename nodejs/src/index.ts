@@ -15,3 +15,5 @@ export {
   SqubeApprovalError,
 } from "./errors.js";
 export { assertTransition, SqubeInvalidStateTransitionError } from "./stateMachine.js";
+export type { EventSink } from "./eventSink.js";
+export { OtelEventSink } from "./telemetry/otel.js";

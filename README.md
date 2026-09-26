@@ -2,7 +2,7 @@
 
 > **Open-source execution authorization infrastructure for AI agents.**
 
-Wrap consequential actions, evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and record tamper-evident execution events. **v1.0** adds composable policies, simulation/explain, declarative policy bundles, hash-chained events (Python + Node), and operator CLI commands.
+Wrap consequential actions, evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and record tamper-evident execution events. **v1.0** adds composable policies, simulation/explain, declarative policy bundles, hash-chained events (Python + Node), optional OpenTelemetry (`pip install sqube-agent-guard[otel]`), and operator CLI commands.
 
 SDK wrapping is bypassable if application code skips the guard. This is **not** a replacement for IAM, gateways, or production security controls.
 
@@ -19,6 +19,8 @@ SDK wrapping is bypassable if application code skips the guard. This is **not** 
 | Rust | `sqube-agent-guard` (build from `rust/`) | `rust/` | Contract + engine/guard; `wrap_action` uses the same engine path |
 
 Shared policy and state-machine contract tests: `tests/contract/`. Public docs: **[GitHub Pages](https://sqube-groups.github.io/sqube-agent-control/docs/intro)**.
+
+**Control plane (v1.0):** local API + dashboard — `pip install "sqube-agent-guard[control-plane]"` then `sqube-agent-guard serve`. See [control plane docs](website/docs/control-plane.md).
 
 ## Quick start (Python)
 
