@@ -1,6 +1,8 @@
 # sqube-agent-guard
 
-**Sqube Execution Guard** is a developer-side helper for v0.1 experiments: it wraps consequential actions, evaluates a deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), can pause for human approval via CLI, and appends decisions to a SQLite ledger. SDK wrapping is bypassable—this is **not** a security boundary and does not replace IAM, gateways, or other controls.
+**Sqube Agent Control** — open-source execution authorization for AI agents.
+
+Evaluate deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), optional human approval, and a tamper-evident execution ledger. The SDK is application-level; bypassing the guard is out of scope for v1.
 
 ## Install
 
@@ -8,35 +10,45 @@
 pip install sqube-agent-guard
 ```
 
+Optional extras:
+
+```bash
+pip install "sqube-agent-guard[control-plane]"   # local API + dashboard
+pip install "sqube-agent-guard[otel]"            # OpenTelemetry bridge
+```
+
 Requires Python 3.10+.
 
 ## Quick start
 
 ```python
-from sqube_agent_guard import ExecutionGuard, Decision
-
+from sqube_agent_guard import Decision, ExecutionGuard
 
 def policy(action, resource, agent_id, **ctx):
-    if action == "delete_file":
+    if action == "email.send":
         return Decision.REQUIRE_APPROVAL
     return Decision.ALLOW
 
-
 guard = ExecutionGuard(policy=policy)
 
-
-@guard.wrap_action(action="delete_file", resource=lambda path: f"file:{path}")
-def delete_file(path):
+@guard.wrap_action(action="email.send", resource="user@example.com")
+def send_email():
     ...
 
-
-delete_file("/tmp/example.txt")
+send_email()
 ```
+
+## Control plane (optional)
+
+```bash
+sqube-agent-guard serve --data-dir .sqube
+```
+
+Open `http://127.0.0.1:8080/setup` on first run to create an administrator account.
 
 ## Documentation
 
-- **Docs intro:** [https://sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)
-- **Source & examples:** [https://github.com/Sqube-Groups/sqube-agent-control](https://github.com/Sqube-Groups/sqube-agent-control)
+https://sqube-groups.github.io/sqube-agent-control/docs/intro
 
 ## License
 

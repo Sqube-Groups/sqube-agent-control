@@ -39,6 +39,7 @@ test("ALLOW executes and writes ledger", async () => {
   assert.equal(await run(), "ok");
   const row = guard.ledger.getLatest();
   assert.equal(row?.status, ActionStatus.SUCCEEDED);
+  assert.equal(guard.ledger.verifyChain(row?.execution_id), true);
 });
 
 test("BLOCK does not execute", async () => {
@@ -92,6 +93,14 @@ test("fail_closed on policy error", async () => {
   });
   const run = guard.wrapAction({ action: "x" }, () => "ok");
   await assert.rejects(() => run(), SqubeGuardError);
+});
+
+test("simulate and explain default policy", () => {
+  const guard = new ExecutionGuard({ ledgerPath: tmpLedger() });
+  assert.equal(guard.simulate("send_email"), Decision.REQUIRE_APPROVAL);
+  const explained = guard.explain("admin_delete");
+  assert.equal(explained.decision, Decision.BLOCK);
+  assert.equal(explained.policyId, "defaultPolicy");
 });
 
 test("fail_open on policy error", async () => {

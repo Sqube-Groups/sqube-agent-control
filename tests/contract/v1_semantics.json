@@ -1,0 +1,53 @@
+{
+  "version": "1",
+  "reference_sdk": "python",
+  "terminal_statuses": [
+    "BLOCKED",
+    "DENIED",
+    "EXPIRED",
+    "SUCCEEDED",
+    "FAILED",
+    "CANCELLED"
+  ],
+  "allowed_transitions": [
+    ["REQUESTED", "EVALUATED"],
+    ["REQUESTED", "BLOCKED"],
+    ["REQUESTED", "FAILED"],
+    ["EVALUATED", "BLOCKED"],
+    ["EVALUATED", "WAITING_APPROVAL"],
+    ["EVALUATED", "EXECUTING"],
+    ["EVALUATED", "FAILED"],
+    ["WAITING_APPROVAL", "APPROVED"],
+    ["WAITING_APPROVAL", "DENIED"],
+    ["WAITING_APPROVAL", "EXPIRED"],
+    ["WAITING_APPROVAL", "CANCELLED"],
+    ["APPROVED", "EXECUTING"],
+    ["APPROVED", "CANCELLED"],
+    ["EXECUTING", "SUCCEEDED"],
+    ["EXECUTING", "FAILED"],
+    ["EXECUTING", "CANCELLED"]
+  ],
+  "illegal_transitions": [
+    ["BLOCKED", "EXECUTING"],
+    ["DENIED", "EXECUTING"],
+    ["EXPIRED", "EXECUTING"],
+    ["SUCCEEDED", "EXECUTING"],
+    ["SUCCEEDED", "SUCCEEDED"],
+    ["WAITING_APPROVAL", "SUCCEEDED"],
+    ["APPROVED", "SUCCEEDED"]
+  ],
+  "approval_request_statuses": [
+    "PENDING",
+    "GRANTED",
+    "DENIED",
+    "EXPIRED",
+    "CONSUMED"
+  ],
+  "deferred_approval_flow": [
+    "EVALUATED",
+    "WAITING_APPROVAL",
+    "APPROVED",
+    "EXECUTING",
+    "SUCCEEDED"
+  ]
+}

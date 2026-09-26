@@ -1,0 +1,10 @@
+{
+  "name": "block_admin_prefix",
+  "policy": "default",
+  "context": {
+    "agent_id": "bot",
+    "action": "admin_delete",
+    "resource": null
+  },
+  "expected_decision": "BLOCK"
+}

@@ -1,8 +1,8 @@
 {
   "name": "sqube-agent-guard",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "readme": "README.md",
-  "description": "Developer-side execution guardrail (v0.1 experiment)",
+  "description": "Execution authorization for AI agents — v1 synchronous semantics and contract tests (see tests/contract/V1_SYNC_SEMANTICS.md)",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/guard.test.js",
+    "test": "npm run build && node --test dist/guard.test.js dist/contract.test.js dist/policyBundle.test.js dist/ledger.test.js dist/contractSemantics.test.js dist/executionEngine.test.js dist/deferredContract.test.js dist/otel.test.js dist/otelContract.test.js",
     "prepublishOnly": "npm run build"
   },
   "engines": {
@@ -30,7 +30,11 @@
   "dependencies": {
     "better-sqlite3": "^11.7.0"
   },
+  "optionalDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
   "devDependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.2"

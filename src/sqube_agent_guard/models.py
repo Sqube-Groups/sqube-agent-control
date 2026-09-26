@@ -37,12 +37,17 @@ class ActionRecord:
     decision: str
     policy_id: str
     status: str
+    policy_version: str | None = None
     approved_by: str | None = None
     approval_reason: str | None = None
     result_status: str | None = None
     error_message: str | None = None
     duration_ms: int | None = None
     completed_at: str | None = None
+    correlation_id: str | None = None
+    parent_execution_id: str | None = None
+    root_execution_id: str | None = None
+    session_id: str | None = None
 
     def to_row(self) -> dict[str, Any]:
         return asdict(self)
