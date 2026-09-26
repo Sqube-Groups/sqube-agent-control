@@ -36,6 +36,12 @@ class ExecutionStore(Protocol):
 
     def get_latest_record(self) -> dict[str, Any] | None: ...
 
+    def register_idempotency(
+        self, idempotency_key: str, execution_id: str, created_at: str
+    ) -> bool: ...
+
+    def get_execution_by_idempotency(self, idempotency_key: str) -> dict[str, Any] | None: ...
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS execution_records (
@@ -59,6 +65,12 @@ CREATE TABLE IF NOT EXISTS execution_records (
   correlation_id TEXT,
   parent_execution_id TEXT,
   root_execution_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  idempotency_key TEXT PRIMARY KEY,
+  execution_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS execution_events (
@@ -238,6 +250,29 @@ class SQLiteExecutionStore:
     def get_latest_record(self) -> dict[str, Any] | None:
         row = self._conn.execute(
             "SELECT * FROM execution_records ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else None
+
+    def register_idempotency(
+        self, idempotency_key: str, execution_id: str, created_at: str
+    ) -> bool:
+        try:
+            self._conn.execute(
+                "INSERT INTO idempotency_keys (idempotency_key, execution_id, created_at) "
+                "VALUES (?, ?, ?)",
+                (idempotency_key, execution_id, created_at),
+            )
+            self._conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def get_execution_by_idempotency(self, idempotency_key: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT r.* FROM execution_records r "
+            "INNER JOIN idempotency_keys k ON k.execution_id = r.execution_id "
+            "WHERE k.idempotency_key = ?",
+            (idempotency_key,),
         ).fetchone()
         return dict(row) if row else None
 

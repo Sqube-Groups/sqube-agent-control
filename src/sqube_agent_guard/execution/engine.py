@@ -8,7 +8,13 @@ from typing import Any, Literal
 
 from sqube_agent_guard.approval.provider import ApprovalProvider, CliApprovalProvider
 from sqube_agent_guard.authority.delegation import Delegation
-from sqube_agent_guard.exceptions import SqubeBlockedError, SqubeDeniedError, SqubeGuardError
+from sqube_agent_guard.exceptions import (
+    SqubeBlockedError,
+    SqubeDeniedError,
+    SqubeGuardError,
+    SqubeIdempotencyConflictError,
+    SqubeIdempotencyReplayError,
+)
 from sqube_agent_guard.execution.context import ExecutionContext
 from sqube_agent_guard.identity.models import AgentIdentity
 from sqube_agent_guard.ledger.events import EventType
@@ -75,6 +81,23 @@ class ExecutionEngine:
             ctx.timestamp = _utc_now_iso()
         if not ctx.root_execution_id:
             ctx.root_execution_id = ctx.execution_id
+
+        if ctx.idempotency_key:
+            if not self._store.register_idempotency(
+                ctx.idempotency_key, ctx.execution_id, ctx.timestamp
+            ):
+                dup = self._store.get_execution_by_idempotency(ctx.idempotency_key)
+                if not dup:
+                    raise SqubeIdempotencyConflictError(
+                        ctx.idempotency_key, ctx.execution_id
+                    )
+                prior_id = dup["execution_id"]
+                status = dup.get("status")
+                if status == ActionStatus.SUCCEEDED.value:
+                    raise SqubeIdempotencyReplayError(prior_id)
+                if status == ActionStatus.BLOCKED.value:
+                    raise SqubeBlockedError(prior_id, dup.get("action", ctx.action))
+                raise SqubeIdempotencyConflictError(ctx.idempotency_key, prior_id)
 
         params_hash = hash_payload(ctx.parameters)
         summary = redact_value(ctx.parameters)
