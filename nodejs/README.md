@@ -1,8 +1,12 @@
 # sqube-agent-guard
 
-**Sqube Agent Control (Node.js)** — execution authorization for AI agents with v1 synchronous semantics.
+**Sqube Agent Control (Node.js)** — v1 execution authorization for AI agents.
 
-Wrap actions, evaluate policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), deferred approval, and hash-chained ledger events. Shared behavior is covered by `tests/contract/` in the monorepo. SDK wrapping is bypassable; this is not a replacement for IAM or network controls.
+Deterministic policy (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL`), deferred human approval, SQLite execution ledger with hash-chained events, and optional OpenTelemetry. Behavior aligns with the shared v1 contract in the [Sqube monorepo](https://github.com/Sqube-Groups/sqube-agent-control) (`tests/contract/`).
+
+The control plane (dashboard, remote event ingest) is operated via the **Python** package today (`pip install "sqube-agent-guard[control-plane]"`). Node focuses on the runtime execution kernel.
+
+SDK wrapping is bypassable; this is not IAM or a network security boundary.
 
 ## Install
 
@@ -32,10 +36,14 @@ const deleteFile = guard.wrapAction(
 await deleteFile("/tmp/example.txt");
 ```
 
+## Optional OpenTelemetry
+
+Install `@opentelemetry/api` in your app and use `OtelEventSink` (observability only; does not affect authorization).
+
 ## Documentation
 
-- Docs: https://sqube-groups.github.io/sqube-agent-control/docs/intro
-- Repository: https://github.com/Sqube-Groups/sqube-agent-control
+- **Docs:** https://sqube-groups.github.io/sqube-agent-control/docs/intro
+- **Repository:** https://github.com/Sqube-Groups/sqube-agent-control/tree/staging/nodejs
 
 ## License
 

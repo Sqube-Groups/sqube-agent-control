@@ -13,6 +13,7 @@ const sidebars = {
     'observability',
     'security-model',
     'threat-model',
+    'site-publishing',
   ],
 };
 
