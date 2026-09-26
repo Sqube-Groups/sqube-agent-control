@@ -29,14 +29,11 @@ examples_ledger.sqlite3
 # OS
 .DS_Store
 
-# Internal / local-only docs (never commit)
-docs_internal_never_commit/*
-!docs_internal_never_commit/MAINTAINER.md.template
-!docs_internal_never_commit/v0.1-spec.md.template
+# Internal / local-only docs (never commit — entire tree)
+docs_internal_never_commit/
 docs-never-commit/
 .local-docs/
 **/never-commit/
-# Legacy spec path (use docs_internal_never_commit/v0.1-spec.md.template locally)
 docs/project md files/
 
 # Docusaurus
