@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+- **Fix:** the PyPI wheel for 1.0.x contained no Python modules (hatch `packages` path missed `src/`), so `pip install sqube-agent-guard` installed nothing importable. The wheel now ships the full package and dashboard assets.
+- **Docker:** control plane image (`ghcr.io/sqube-groups/sqube-agent-control`), non-root with health check; `docker-compose.yml` with an optional demo agent (`--profile demo`).
+- CI builds and installs the wheel in a clean venv, and builds and smoke-tests the Docker image. Release publishes multi-arch images to GHCR.
+
 ## 1.0.5
 
 - npm: shorter `description` and README lead (no duplicate title/table above the fold).

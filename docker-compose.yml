@@ -1,0 +1,42 @@
+# Local stack: control plane (API + dashboard) and an optional demo agent.
+#
+#   docker compose up -d                      # control plane only
+#   docker compose --profile demo up --build  # plus a demo agent exporting events
+#
+# Open http://127.0.0.1:8080/setup on first start to create the admin account.
+
+services:
+  control-plane:
+    build: .
+    image: ghcr.io/sqube-groups/sqube-agent-control:latest
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Agents send this in X-Sqube-Api-Key when posting events. Change it.
+      SQUBE_API_KEY: ${SQUBE_API_KEY:-change-me-ingest-key}
+      # Set to 1 when serving over HTTPS behind a reverse proxy.
+      SQUBE_COOKIE_SECURE: ${SQUBE_COOKIE_SECURE:-0}
+      # Optional: auto-create user "admin" on first start (8+ characters).
+      SQUBE_ADMIN_PASSWORD: ${SQUBE_ADMIN_PASSWORD:-}
+    volumes:
+      - sqube-data:/data
+    restart: unless-stopped
+
+  demo-agent:
+    profiles: ["demo"]
+    image: ghcr.io/sqube-groups/sqube-agent-control:latest
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    entrypoint: ["python", "/app/docker_demo_agent.py"]
+    command: []
+    environment:
+      SQUBE_CONTROL_PLANE_URL: http://control-plane:8080
+      SQUBE_API_KEY: ${SQUBE_API_KEY:-change-me-ingest-key}
+    volumes:
+      - ./examples/python/docker_demo_agent.py:/app/docker_demo_agent.py:ro
+      - demo-agent-data:/data
+
+volumes:
+  sqube-data:
+  demo-agent-data:

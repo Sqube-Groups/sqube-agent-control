@@ -8,19 +8,19 @@ SDK wrapping is bypassable if application code skips the guard. This is **not** 
 
 ## Status
 
-**v1.0.5** on [`main`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main) — Python is the reference SDK; Node and Rust implement the shared execution contract ([`tests/contract/`](tests/contract/)). See [CHANGELOG.md](CHANGELOG.md) and [V1_SYNC_SEMANTICS.md](tests/contract/V1_SYNC_SEMANTICS.md).
+**v1.1.0** on [`main`](https://github.com/Sqube-Groups/sqube-agent-control/tree/main) — Python is the reference SDK; Node and Rust implement the shared execution contract ([`tests/contract/`](tests/contract/)). See [CHANGELOG.md](CHANGELOG.md) and [V1_SYNC_SEMANTICS.md](tests/contract/V1_SYNC_SEMANTICS.md).
 
 ## SDKs
 
 | Language | Package | Path |
 |----------|---------|------|
-| Python | [`sqube-agent-guard`](https://pypi.org/project/sqube-agent-guard/) **1.0.5** (PyPI) | `src/sqube_agent_guard/` |
-| Node.js | [`sqube-agent-guard`](https://www.npmjs.com/package/sqube-agent-guard) **1.0.5** (npm) | [`nodejs/`](nodejs/) |
+| Python | [`sqube-agent-guard`](https://pypi.org/project/sqube-agent-guard/) **1.1.0** (PyPI) | `src/sqube_agent_guard/` |
+| Node.js | [`sqube-agent-guard`](https://www.npmjs.com/package/sqube-agent-guard) **1.1.0** (npm) | [`nodejs/`](nodejs/) |
 | Rust | build from repo (not on crates.io yet) | [`rust/`](rust/) |
 
 **Docs:** [sqube-groups.github.io/sqube-agent-control/docs/intro](https://sqube-groups.github.io/sqube-agent-control/docs/intro)
 
-**Control plane:** `pip install "sqube-agent-guard[control-plane]"` then `sqube-agent-guard serve` — first visit `/setup` to create an admin account. See [control plane](website/docs/control-plane.md) and [event ingestion](website/docs/event-ingestion.md).
+**Control plane:** `pip install "sqube-agent-guard[control-plane]"` then `sqube-agent-guard serve`, or run it in Docker (below) — first visit `/setup` to create an admin account. See [control plane](website/docs/control-plane.md) and [event ingestion](website/docs/event-ingestion.md).
 
 ## Quick start (Python)
 
@@ -86,6 +86,18 @@ npm install sqube-agent-guard
 ```
 
 Rust: clone and build from `rust/` ([rust/README.md](rust/README.md)).
+
+## Docker
+
+```bash
+docker run -d -p 127.0.0.1:8080:8080 -v sqube-data:/data \
+  -e SQUBE_API_KEY=your-ingest-key ghcr.io/sqube-groups/sqube-agent-control:latest
+
+# or, from a clone: control plane + demo agent
+docker compose --profile demo up --build
+```
+
+See [Docker](website/docs/docker.md).
 
 ## Development
 
