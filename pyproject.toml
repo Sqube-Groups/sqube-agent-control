@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sqube-agent-guard"
-version = "1.0.5"
+version = "1.1.0"
 description = "Open-source execution authorization and control infrastructure for AI agents"
 readme = "README.pypi.md"
 license = "Apache-2.0"
@@ -43,7 +43,7 @@ sqube-agent-guard = "sqube_agent_guard.cli:main"
 dev-mode-dirs = ["src"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["sqube_agent_guard"]
+packages = ["src/sqube_agent_guard"]
 
 [tool.hatch.build.targets.sdist]
 exclude = ["/README.md"]

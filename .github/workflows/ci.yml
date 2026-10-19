@@ -18,6 +18,26 @@ jobs:
         run: pip install -e ".[dev,policy,control-plane,otel]"
       - name: Pytest
         run: pytest
+      - name: Wheel installs and imports
+        run: |
+          pip install build
+          python -m build --wheel --outdir dist
+          python -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install "$(ls dist/*.whl)[control-plane]"
+          cd /tmp && /tmp/wheel-venv/bin/python -c "import sqube_agent_guard.control_plane.api"
+          /tmp/wheel-venv/bin/sqube-agent-guard --help
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t sqube-agent-control:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name cp -p 8080:8080 sqube-agent-control:ci
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/api/v1/health && exit 0; sleep 1; done
+          docker logs cp; exit 1
 
   node:
     runs-on: ubuntu-latest

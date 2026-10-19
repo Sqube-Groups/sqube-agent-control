@@ -6,6 +6,7 @@ const sidebars = {
     'concepts',
     'architecture',
     'control-plane',
+    'docker',
     'event-ingestion',
     'control-plane-auth',
     'policies',
