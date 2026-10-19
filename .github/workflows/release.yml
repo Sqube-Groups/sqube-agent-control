@@ -37,7 +37,7 @@ jobs:
       - name: Verify wheel contains the package
         run: |
           python -m venv /tmp/wheel-venv
-          /tmp/wheel-venv/bin/pip install dist/*.whl
+          /tmp/wheel-venv/bin/pip install "$(ls dist/*.whl)[control-plane]"
           cd /tmp && /tmp/wheel-venv/bin/python -c "import sqube_agent_guard.control_plane.api"
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
